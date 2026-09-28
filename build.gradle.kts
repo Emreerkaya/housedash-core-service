@@ -102,7 +102,21 @@ tasks.jacocoTestCoverageVerification {
     }
 }
 
+tasks.register("verifyIntegrationTestSourceSetNotEmpty") {
+    group = "verification"
+    val integrationSource = sourceSets["integrationTest"].allSource
+    inputs.files(integrationSource)
+    doLast {
+        if (integrationSource.isEmpty) {
+            throw GradleException(
+                "src/integrationTest has no source files; a NO-SOURCE integrationTest run must not pass as green",
+            )
+        }
+    }
+}
+
 tasks.check {
     dependsOn(tasks.named("integrationTest"))
     dependsOn(tasks.jacocoTestCoverageVerification)
+    dependsOn(tasks.named("verifyIntegrationTestSourceSetNotEmpty"))
 }
