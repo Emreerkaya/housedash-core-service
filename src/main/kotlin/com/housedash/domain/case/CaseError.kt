@@ -1,6 +1,7 @@
 package com.housedash.domain.case
 
 import com.housedash.domain.shared.ContactDetail
+import com.housedash.domain.shared.IdentifierFlaw
 
 sealed interface CaseError {
     data class DescriptionTooShort(
@@ -28,11 +29,17 @@ sealed interface CaseError {
         val position: Int,
     ) : CaseError
 
-    data object MalformedCaseId : CaseError
+    data class MalformedCaseId(
+        val flaw: IdentifierFlaw,
+    ) : CaseError
 
-    data object MalformedPhotoId : CaseError
+    data class MalformedPhotoId(
+        val flaw: IdentifierFlaw,
+    ) : CaseError
 
-    data object MalformedNesterId : CaseError
+    data class MalformedNesterId(
+        val flaw: IdentifierFlaw,
+    ) : CaseError
 
     data object NotOwner : CaseError
 }

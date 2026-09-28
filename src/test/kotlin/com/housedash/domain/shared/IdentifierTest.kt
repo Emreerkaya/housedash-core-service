@@ -1,9 +1,13 @@
 package com.housedash.domain.shared
 
 import org.junit.jupiter.api.Test
+import java.lang.reflect.InvocationTargetException
+import java.lang.reflect.Modifier
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertIs
 import kotlin.test.assertNotEquals
+import kotlin.test.assertTrue
 
 class IdentifierTest {
     @Test
@@ -33,13 +37,52 @@ class IdentifierTest {
         assertNotEquals<Any>(LeftId("id_1"), "id_1")
     }
 
+    @Test
+    fun `the base identifier is abstract and its only constructor is protected`() {
+        assertTrue(Modifier.isAbstract(Identifier::class.java.modifiers))
+        assertTrue(Identifier::class.java.constructors.isEmpty())
+        val constructor = Identifier::class.java.declaredConstructors.single()
+        assertTrue(Modifier.isProtected(constructor.modifiers))
+    }
+
+    @Test
+    fun `a bare identifier with a caller-chosen shape cannot be built reflectively`() {
+        val constructor = Identifier::class.java.declaredConstructors.single()
+        assertFailsWith<InstantiationException> { constructor.newInstance("id_1", IdentifierShape("", 64)) }
+    }
+
+    @Test
+    fun `a bare identifier cannot be built even once the constructor is forced open`() {
+        val constructor = Identifier::class.java.declaredConstructors.single()
+        constructor.isAccessible = true
+        assertFailsWith<InstantiationException> { constructor.newInstance("id_1", IdentifierShape("", 64)) }
+    }
+
+    @Test
+    fun `forcing a subclass constructor open still cannot produce a value outside its shape`() {
+        val constructor = LeftId::class.java.declaredConstructors.single()
+        constructor.isAccessible = true
+        val thrown =
+            assertFailsWith<InvocationTargetException> { constructor.newInstance("not a shape at all") }
+        assertIs<IllegalArgumentException>(thrown.targetException)
+    }
+
+    @Test
+    fun `an identifier renders as the opaque value it holds and not as an identity hash`() {
+        assertEquals("id_1", LeftId("id_1").toString())
+    }
+
     private class LeftId(
         value: String,
-    ) : Identifier(value, SHAPE)
+    ) : Identifier(value, SHAPE) {
+        override fun toString(): String = value
+    }
 
     private class RightId(
         value: String,
-    ) : Identifier(value, SHAPE)
+    ) : Identifier(value, SHAPE) {
+        override fun toString(): String = value
+    }
 
     private companion object {
         private val SHAPE = IdentifierShape("id_", 8)
