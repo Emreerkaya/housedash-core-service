@@ -1,8 +1,10 @@
 package com.housedash.architecture
 
 import com.tngtech.archunit.base.DescribedPredicate
+import com.tngtech.archunit.core.domain.JavaCall
 import com.tngtech.archunit.core.domain.JavaClass
 import com.tngtech.archunit.core.domain.properties.HasName
+import com.tngtech.archunit.core.domain.properties.HasOwner
 import com.tngtech.archunit.core.importer.ClassFileImporter
 import com.tngtech.archunit.core.importer.ImportOption
 import com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses
@@ -24,6 +26,13 @@ class LayeringTest {
             parameters.any { floatingPointType.test(it) }
         }
 
+    private fun callTo(
+        methodName: String,
+        ownerPackage: String,
+    ) = JavaCall.Predicates
+        .target(HasOwner.Predicates.With.owner(JavaClass.Predicates.resideInAPackage(ownerPackage)))
+        .and(JavaCall.Predicates.target(HasName.Predicates.name(methodName)))
+
     @Test
     fun `domain depends on no framework`() {
         noClasses()
@@ -42,7 +51,13 @@ class LayeringTest {
 
     @Test
     fun `domain never reads the clock`() {
-        noClasses().should().callMethod(java.time.Instant::class.java, "now").check(domain)
+        noClasses().should().callMethodWhere(callTo("now", "java.time")).check(domain)
+        noClasses()
+            .should()
+            .callMethod(System::class.java, "currentTimeMillis")
+            .orShould()
+            .callMethod(System::class.java, "nanoTime")
+            .check(domain)
         noClasses()
             .should()
             .dependOnClassesThat()
@@ -51,8 +66,20 @@ class LayeringTest {
     }
 
     @Test
-    fun `domain never generates its own identifiers`() {
+    fun `domain never generates its own randomness`() {
+        noClasses()
+            .should()
+            .dependOnClassesThat()
+            .resideInAnyPackage("kotlin.random..", "kotlin.uuid..")
+            .orShould()
+            .dependOnClassesThat()
+            .haveNameMatching("java\\.util\\.(concurrent\\.ThreadLocalRandom|Random)|java\\.security\\.SecureRandom")
+            .check(domain)
         noClasses().should().callMethod(java.util.UUID::class.java, "randomUUID").check(domain)
+        noClasses()
+            .should()
+            .callMethodWhere(JavaCall.Predicates.target(HasName.Predicates.name("shuffled")))
+            .check(domain)
     }
 
     @Test
