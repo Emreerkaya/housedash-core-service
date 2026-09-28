@@ -22,7 +22,9 @@ SonarCloud is included because it is free on a public repository. detekt stays r
 
 Because there are no comments in code, there are also no suppressions. `@Suppress` is not used: a suppression without a stated reason is worse than the smell it hides, and the place a reason would go no longer exists. If detekt objects, the code changes.
 
-Each gate was observed failing against a deliberately broken input before it was trusted: a non-conventional subject, a deleted test dropping coverage below threshold, a Spring import added to `domain/`, a blocking review left standing. A gate never seen to fail is not known to be a gate.
+A gate never seen to fail is not known to be a gate, so each one is broken on purpose before it is trusted. Four have been: a non-conventional commit subject, a `//` comment in Kotlin, malformed formatting, and a deliberately failed assertion. Each returned a non-zero exit and named the offence.
+
+Three have not, and are listed here rather than assumed. The coverage threshold could not be exercised while no production code existed to leave uncovered. The `domain/` import ban could not be exercised before `domain/` existed. The review check does not exist yet. Each is verified in the change that first makes it possible, and until then it is an intention, not a gate.
 
 ## Consequences
 
