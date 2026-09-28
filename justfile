@@ -7,10 +7,10 @@ build:
     ./gradlew assemble
 
 lint:
-    ./gradlew ktlintCheck detektMain detektTest detektIntegrationTest
+    ./gradlew verifyNoSuppressions ktlintCheck detektMain detektTest detektIntegrationTest
 
 test:
-    ./gradlew test integrationTest
+    ./gradlew verifyIntegrationTestSourceSetNotEmpty test integrationTest
 
 sonar:
     ./gradlew jacocoTestReport jacocoTestCoverageVerification
