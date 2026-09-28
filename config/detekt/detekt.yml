@@ -37,3 +37,11 @@ naming:
 exceptions:
   TooGenericExceptionCaught:
     active: true
+
+potential-bugs:
+  IgnoredReturnValue:
+    returnValueTypes:
+      - 'kotlin.sequences.Sequence'
+      - 'kotlinx.coroutines.flow.*Flow'
+      - 'java.util.stream.*Stream'
+      - 'com.housedash.domain.shared.Outcome'

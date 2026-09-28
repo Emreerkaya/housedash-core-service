@@ -7,7 +7,7 @@ build:
     ./gradlew assemble
 
 lint:
-    ./gradlew ktlintCheck detekt
+    ./gradlew ktlintCheck detektMain detektTest detektIntegrationTest
 
 test:
     ./gradlew test integrationTest
