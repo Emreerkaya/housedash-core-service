@@ -50,6 +50,20 @@ class LayeringTest {
     }
 
     @Test
+    fun `domain performs no I O`() {
+        noClasses()
+            .should()
+            .dependOnClassesThat()
+            .resideInAnyPackage(
+                "java.io..",
+                "java.nio..",
+                "java.net..",
+                "java.util.logging..",
+                "org.slf4j..",
+            ).check(domain)
+    }
+
+    @Test
     fun `domain never reads the clock`() {
         noClasses().should().callMethodWhere(callTo("now", "java.time")).check(domain)
         noClasses()
