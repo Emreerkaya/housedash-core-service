@@ -1,0 +1,100 @@
+name: process-mr
+
+on:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: mr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  commitlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup-jvm
+      - run: just commits origin/${{ github.base_ref }}
+
+  ktlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-jvm
+      - run: ./gradlew ktlintCheck
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ktlint-reports
+          path: build/reports/ktlint/
+          if-no-files-found: ignore
+
+  detekt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-jvm
+      - run: ./gradlew detektMain detektTest detektIntegrationTest
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: detekt-reports
+          path: build/reports/detekt/
+          if-no-files-found: ignore
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-jvm
+      - run: ./gradlew test integrationTest
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-results
+          path: |
+            build/test-results/
+            build/reports/tests/
+          if-no-files-found: ignore
+
+  jacoco:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-jvm
+      - run: ./gradlew jacocoTestReport jacocoTestCoverageVerification
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-report
+          path: build/reports/jacoco/
+          if-no-files-found: ignore
+
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_COMMENTS: false
+
+  agent-review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v7
+      - run: scripts/agent-review.sh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}

@@ -13,14 +13,11 @@ fail=0
 while read -r sha; do
     [ -z "$sha" ] && continue
     subject=$(git log -1 --format=%s "$sha")
-    case "$subject" in
-        Merge*|Revert*) continue ;;
-    esac
     if ! printf '%s' "$subject" | grep -Eq "$pattern"; then
         printf 'rejected: %s\n  %s\n' "${sha:0:8}" "$subject" >&2
         fail=1
     fi
-done < <(git rev-list "$base"..HEAD)
+done < <(git rev-list --no-merges "$base"..HEAD)
 
 if [ "$fail" -eq 0 ]; then
     echo "every subject matches conventional commits with an issue reference"
