@@ -153,4 +153,7 @@ tasks.check {
     dependsOn(tasks.jacocoTestCoverageVerification)
     dependsOn(tasks.named("verifyIntegrationTestSourceSetNotEmpty"))
     dependsOn(tasks.named("verifyNoSuppressions"))
+    dependsOn(tasks.named("detektMain"))
+    dependsOn(tasks.named("detektTest"))
+    dependsOn(tasks.named("detektIntegrationTest"))
 }

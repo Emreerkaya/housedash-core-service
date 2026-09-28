@@ -9,7 +9,7 @@ class IdentifierShape(
     fun accepts(raw: String): Boolean = pattern.matches(raw)
 }
 
-abstract class Identifier internal constructor(
+open class Identifier internal constructor(
     val value: String,
     shape: IdentifierShape,
 ) {
