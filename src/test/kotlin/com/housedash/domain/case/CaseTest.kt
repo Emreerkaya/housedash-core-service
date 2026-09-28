@@ -1,91 +1,157 @@
 package com.housedash.domain.case
 
 import com.housedash.domain.shared.Outcome
-import org.junit.jupiter.api.Test
 import java.time.Instant
+import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
-import kotlin.test.assertNull
 
 class CaseTest {
-    private val t0 = Instant.parse("2026-09-24T10:00:00Z")
-    private val t1 = Instant.parse("2026-09-24T10:05:00Z")
-    private val id = CaseId("cs_test")
-
-    private fun description(): Description {
-        val outcome = Description.of("kitchen tap drips from the base")
-        return assertIs<Outcome.Ok<Description>>(outcome).value
-    }
-
     @Test
-    fun `a draft carries no description and no photos`() {
-        val case = Case.draft(id, t0)
+    fun `a draft carries its id, its owner and its creation time and nothing else`() {
+        val case = draft()
+        assertEquals(caseId(), case.id)
+        assertEquals(nesterId(), case.owner)
+        assertEquals(createdAt, case.createdAt)
         assertEquals(CaseState.DRAFT, case.state)
-        assertNull(case.description)
-        assertEquals(emptyList(), case.photos)
-        assertNull(case.describedAt)
     }
 
     @Test
-    fun `describing a draft moves it to DESCRIBED and stamps the time`() {
-        val case =
-            assertIs<Outcome.Ok<Case>>(
-                Case.draft(id, t0).describe(description(), listOf(PhotoId("ph_1")), t1),
-            ).value
+    fun `describing a draft produces a described case that stamps the time`() {
+        val case = described()
         assertEquals(CaseState.DESCRIBED, case.state)
-        assertEquals(t1, case.describedAt)
-        assertEquals(t0, case.createdAt)
+        assertEquals(createdAt, case.createdAt)
+        assertEquals(describedAt, case.describedAt)
+        assertEquals(description(), case.description)
+        assertEquals(listOf(photoId()), case.photos)
     }
 
     @Test
-    fun `describing an already described case is rejected`() {
-        val once =
-            assertIs<Outcome.Ok<Case>>(
-                Case.draft(id, t0).describe(description(), emptyList(), t1),
-            ).value
-        val twice = once.describe(description(), emptyList(), t1)
-        assertEquals(CaseError.AlreadyDescribed, assertIs<Outcome.Err<CaseError>>(twice).error)
+    fun `describing carries the id and the owner across the transition`() {
+        val case = described()
+        assertEquals(caseId(), case.id)
+        assertEquals(nesterId(), case.owner)
     }
 
     @Test
-    fun `exactly four photos is accepted and five is not`() {
-        val four = (1..4).map { PhotoId("ph_$it") }
-        assertIs<Outcome.Ok<Case>>(Case.draft(id, t0).describe(description(), four, t1))
-        val five = (1..5).map { PhotoId("ph_$it") }
-        val err =
-            assertIs<Outcome.Err<CaseError>>(
-                Case.draft(id, t0).describe(description(), five, t1),
-            )
-        assertEquals(CaseError.TooManyPhotos(5, 4), err.error)
+    fun `only the owner may describe their case`() {
+        val outcome = draft().describe(nesterId("ns_intruder"), description(), emptyList(), describedAt)
+        assertEquals(CaseError.NotOwner, assertIs<Outcome.Err<CaseError>>(outcome).error)
     }
 
     @Test
-    fun `a repeated photo is rejected`() {
-        val err =
-            assertIs<Outcome.Err<CaseError>>(
-                Case.draft(id, t0).describe(description(), listOf(PhotoId("ph_1"), PhotoId("ph_1")), t1),
-            )
-        assertEquals(CaseError.DuplicatePhoto(PhotoId("ph_1")), err.error)
+    fun `the owner check runs before the photo checks`() {
+        val photos = (1..5).map { photoId("ph_$it") }
+        val outcome = draft().describe(nesterId("ns_intruder"), description(), photos, describedAt)
+        assertEquals(CaseError.NotOwner, assertIs<Outcome.Err<CaseError>>(outcome).error)
+    }
+
+    @Test
+    fun `zero photos is accepted`() {
+        val case = described(photos = emptyList())
+        assertEquals(emptyList(), case.photos)
+    }
+
+    @Test
+    fun `exactly four photos is accepted`() {
+        val photos = (1..4).map { photoId("ph_$it") }
+        assertEquals(photos, described(photos = photos).photos)
+    }
+
+    @Test
+    fun `five photos is rejected with the count and the maximum`() {
+        val photos = (1..5).map { photoId("ph_$it") }
+        val outcome = draft().describe(nesterId(), description(), photos, describedAt)
+        assertEquals(CaseError.TooManyPhotos(5, 4), assertIs<Outcome.Err<CaseError>>(outcome).error)
+    }
+
+    @Test
+    fun `a repeated photo is rejected by position and not by identifier`() {
+        val photos = listOf(photoId("ph_a"), photoId("ph_b"), photoId("ph_a"))
+        val outcome = draft().describe(nesterId(), description(), photos, describedAt)
+        assertEquals(CaseError.DuplicatePhoto(2), assertIs<Outcome.Err<CaseError>>(outcome).error)
+    }
+
+    @Test
+    fun `a photo repeated immediately is reported at the second position`() {
+        val photos = listOf(photoId("ph_a"), photoId("ph_a"))
+        val outcome = draft().describe(nesterId(), description(), photos, describedAt)
+        assertEquals(CaseError.DuplicatePhoto(1), assertIs<Outcome.Err<CaseError>>(outcome).error)
     }
 
     @Test
     fun `photo order is preserved`() {
-        val given = listOf(PhotoId("ph_c"), PhotoId("ph_a"), PhotoId("ph_b"))
-        val case =
-            assertIs<Outcome.Ok<Case>>(
-                Case.draft(id, t0).describe(description(), given, t1),
-            ).value
-        assertEquals(given, case.photos)
+        val photos = listOf(photoId("ph_c"), photoId("ph_a"), photoId("ph_b"))
+        assertEquals(photos, described(photos = photos).photos)
     }
 
     @Test
     fun `the photo list is defensively copied`() {
-        val mutable = mutableListOf(PhotoId("ph_1"))
-        val case =
-            assertIs<Outcome.Ok<Case>>(
-                Case.draft(id, t0).describe(description(), mutable, t1),
-            ).value
-        mutable.add(PhotoId("ph_2"))
+        val mutable = mutableListOf(photoId("ph_1"))
+        val case = described(photos = mutable)
+        mutable.add(photoId("ph_2"))
         assertEquals(1, case.photos.size)
+    }
+
+    @Test
+    fun `a failed describe leaves the draft untouched and returns no case`() {
+        val original = draft()
+        val outcome = original.describe(nesterId("ns_intruder"), description(), emptyList(), describedAt)
+        assertIs<Outcome.Err<CaseError>>(outcome)
+        assertEquals(CaseState.DRAFT, original.state)
+        assertIs<Outcome.Ok<DescribedCase>>(
+            original.describe(nesterId(), description(), emptyList(), describedAt),
+        )
+    }
+
+    @Test
+    fun `describing at the instant of creation is accepted`() {
+        val case = described(at = createdAt)
+        assertEquals(createdAt, case.describedAt)
+    }
+
+    @Test
+    fun `describing before the case was created is a corrupt case and not a returned error`() {
+        val before = Instant.parse("2026-09-24T09:00:00Z")
+        val thrown =
+            assertFailsWith<CorruptCase> {
+                draft().describe(nesterId(), description(), emptyList(), before)
+            }
+        assertEquals(CaseFault.DESCRIBED_BEFORE_CREATED, thrown.fault)
+    }
+
+    @Test
+    fun `the described case constructor rejects more photos than the maximum`() {
+        val photos = (1..5).map { photoId("ph_$it") }
+        val thrown =
+            assertFailsWith<CorruptCase> {
+                DescribedCase(caseId(), nesterId(), createdAt, description(), photos, describedAt)
+            }
+        assertEquals(CaseFault.TOO_MANY_PHOTOS, thrown.fault)
+    }
+
+    @Test
+    fun `the described case constructor rejects a repeated photo`() {
+        val photos = listOf(photoId("ph_a"), photoId("ph_a"))
+        val thrown =
+            assertFailsWith<CorruptCase> {
+                DescribedCase(caseId(), nesterId(), createdAt, description(), photos, describedAt)
+            }
+        assertEquals(CaseFault.DUPLICATE_PHOTO, thrown.fault)
+    }
+
+    @Test
+    fun `the described case constructor rejects a description time before creation`() {
+        val thrown =
+            assertFailsWith<CorruptCase> {
+                DescribedCase(caseId(), nesterId(), describedAt, description(), emptyList(), createdAt)
+            }
+        assertEquals(CaseFault.DESCRIBED_BEFORE_CREATED, thrown.fault)
+    }
+
+    @Test
+    fun `the maximum photo count is four`() {
+        assertEquals(4, Case.MAX_PHOTOS)
     }
 }
