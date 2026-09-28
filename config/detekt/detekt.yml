@@ -21,6 +21,7 @@ style:
   MagicNumber:
     ignorePropertyDeclaration: true
     ignoreCompanionObjectPropertyDeclaration: true
+    excludes: ['**/test/**', '**/integrationTest/**', '**/*.kts']
   ForbiddenComment:
     active: true
     comments:
@@ -28,6 +29,10 @@ style:
         value: "(?s).+"
   ReturnCount:
     max: 5
+
+naming:
+  FunctionNaming:
+    excludes: ['**/test/**', '**/integrationTest/**']
 
 exceptions:
   TooGenericExceptionCaught:
