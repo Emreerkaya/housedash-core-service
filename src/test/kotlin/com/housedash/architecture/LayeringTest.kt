@@ -1,11 +1,28 @@
 package com.housedash.architecture
 
+import com.tngtech.archunit.base.DescribedPredicate
+import com.tngtech.archunit.core.domain.JavaClass
+import com.tngtech.archunit.core.domain.properties.HasName
 import com.tngtech.archunit.core.importer.ClassFileImporter
+import com.tngtech.archunit.core.importer.ImportOption
 import com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses
+import com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noFields
+import com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noMethods
 import org.junit.jupiter.api.Test
 
 class LayeringTest {
-    private val domain = ClassFileImporter().importPackages("com.housedash.domain")
+    private val domain =
+        ClassFileImporter()
+            .withImportOption(ImportOption.DoNotIncludeTests())
+            .importPackages("com.housedash.domain")
+
+    private val floatingPointType =
+        HasName.Predicates.nameMatching("^(java\\.lang\\.)?(Double|Float|double|float)$|^\\[+[DF]$")
+
+    private val anyFloatingPointParameter =
+        DescribedPredicate.describe<List<JavaClass>>("any parameter is floating point") { parameters ->
+            parameters.any { floatingPointType.test(it) }
+        }
 
     @Test
     fun `domain depends on no framework`() {
@@ -40,15 +57,12 @@ class LayeringTest {
 
     @Test
     fun `domain holds no floating point`() {
-        noClasses()
+        noFields().should().haveRawType(floatingPointType).check(domain)
+        noMethods()
             .should()
-            .dependOnClassesThat()
-            .haveFullyQualifiedName("java.lang.Double")
-            .check(domain)
-        noClasses()
-            .should()
-            .dependOnClassesThat()
-            .haveFullyQualifiedName("java.lang.Float")
+            .haveRawReturnType(floatingPointType)
+            .orShould()
+            .haveRawParameterTypes(anyFloatingPointParameter)
             .check(domain)
     }
 }
