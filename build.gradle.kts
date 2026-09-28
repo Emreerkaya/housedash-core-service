@@ -82,12 +82,12 @@ tasks.jacocoTestReport {
 
 tasks.jacocoTestCoverageVerification {
     dependsOn(tasks.test)
-    mustRunAfter(tasks.named("integrationTest"))
+    dependsOn(tasks.named("integrationTest"))
     executionData.setFrom(coverageData)
     violationRules {
         rule {
             element = "PACKAGE"
-            includes = listOf("com.housedash.domain.*")
+            includes = listOf("com.housedash.domain", "com.housedash.domain.*")
             limit {
                 counter = "LINE"
                 minimum = "0.90".toBigDecimal()
