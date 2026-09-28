@@ -15,6 +15,8 @@ sealed interface Outcome<out T, out E> {
         override fun <R> flatMap(transform: (T) -> Outcome<R, Nothing>): Outcome<R, Nothing> = transform(value)
 
         override fun <F> mapError(transform: (Nothing) -> F): Outcome<T, F> = this
+
+        override fun toString(): String = "Ok(${payloadTypeOf(value)})"
     }
 
     data class Err<out E>(
@@ -27,3 +29,9 @@ sealed interface Outcome<out T, out E> {
         override fun <F> mapError(transform: (E) -> F): Outcome<Nothing, F> = Err(transform(error))
     }
 }
+
+private fun payloadTypeOf(value: Any?): String =
+    when (value) {
+        null -> "null"
+        else -> value::class.simpleName ?: value.javaClass.name
+    }
