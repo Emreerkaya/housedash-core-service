@@ -16,6 +16,8 @@ There is one deployable, `housedash-core-service`, with three layers under `com.
 
 `domain/` holds one package per bounded context: `case`, `matching`, `quote`, `booking`, `money`, `review` and `licence`. Each owns its aggregates, its state machine and its sealed error type. These package lines are where the future repositories will split, so nothing in one context reaches into another's internals.
 
+Alongside them sits one package that is not a bounded context. `domain/shared` holds the kernel every context needs and none of them owns: the result type, the plain-text and free-text rules, the contact-and-payment filter that enforces invariant I7, and the identifier shape. The rule that keeps it honest is that **`domain/shared` never names a type belonging to a context** — a shared kernel that knows what a `CaseError` is has stopped being shared and has become a second home for `case`. Each context maps the kernel's failures onto its own sealed error type at the point of use.
+
 `app/` holds the use cases, one class each. A use case is the transaction boundary: it loads aggregates, calls domain commands, persists the result.
 
 `adapters/` holds the inbound REST controllers with their request and response types, and the outbound Postgres repositories with their Flyway migrations. DTOs never expose domain types, so the wire format and the model version independently.
