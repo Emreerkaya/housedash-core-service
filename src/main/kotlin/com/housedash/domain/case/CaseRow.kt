@@ -12,6 +12,7 @@ class CaseRow(
 )
 
 enum class CaseFault {
+    FIELD_ABSENT,
     MALFORMED_ID,
     MALFORMED_OWNER,
     MALFORMED_PHOTO_ID,
@@ -30,3 +31,8 @@ enum class CaseFault {
 class CorruptCase internal constructor(
     val fault: CaseFault,
 ) : IllegalStateException(fault.name)
+
+internal fun absentFieldFaultOf(vararg fields: Any?): CaseFault? {
+    val anyAbsent = fields.any { it == null }
+    return if (anyAbsent) CaseFault.FIELD_ABSENT else null
+}

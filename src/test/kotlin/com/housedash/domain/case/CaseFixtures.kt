@@ -1,5 +1,6 @@
 package com.housedash.domain.case
 
+import com.housedash.domain.shared.NesterId
 import com.housedash.domain.shared.Outcome
 import java.time.Instant
 import kotlin.test.assertIs
@@ -11,7 +12,7 @@ internal const val TAP_DESCRIPTION = "kitchen tap drips from the base"
 
 internal fun caseId(raw: String = "cs_1"): CaseId = ok(CaseId.of(raw))
 
-internal fun nesterId(raw: String = "ns_1"): NesterId = ok(NesterId.of(raw))
+internal fun nesterId(raw: String = "ns_1"): NesterId = ok(ownerOf(raw))
 
 internal fun photoId(raw: String = "ph_1"): PhotoId = ok(PhotoId.of(raw))
 

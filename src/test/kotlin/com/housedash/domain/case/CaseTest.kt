@@ -122,32 +122,49 @@ class CaseTest {
     }
 
     @Test
-    fun `the described case constructor rejects more photos than the maximum`() {
+    fun `the photo collection rejects more photos than the maximum`() {
         val photos = (1..5).map { photoId("ph_$it") }
-        val thrown =
-            assertFailsWith<CorruptCase> {
-                DescribedCase(caseId(), nesterId(), createdAt, description(), photos, describedAt)
-            }
+        val thrown = assertFailsWith<CorruptCase> { CasePhotos.rehydrated(photos) }
         assertEquals(CaseFault.TOO_MANY_PHOTOS, thrown.fault)
     }
 
     @Test
-    fun `the described case constructor rejects a repeated photo`() {
+    fun `the photo collection rejects a repeated photo`() {
         val photos = listOf(photoId("ph_a"), photoId("ph_a"))
-        val thrown =
-            assertFailsWith<CorruptCase> {
-                DescribedCase(caseId(), nesterId(), createdAt, description(), photos, describedAt)
-            }
+        val thrown = assertFailsWith<CorruptCase> { CasePhotos.rehydrated(photos) }
         assertEquals(CaseFault.DUPLICATE_PHOTO, thrown.fault)
     }
 
     @Test
-    fun `the described case constructor rejects a description time before creation`() {
+    fun `the described case rejects a description time before creation`() {
+        val early = Instant.parse("2026-09-24T09:00:00Z")
         val thrown =
             assertFailsWith<CorruptCase> {
-                DescribedCase(caseId(), nesterId(), describedAt, description(), emptyList(), createdAt)
+                Case.draft(caseId(), nesterId(), createdAt).describe(nesterId(), description(), emptyList(), early)
             }
         assertEquals(CaseFault.DESCRIBED_BEFORE_CREATED, thrown.fault)
+    }
+
+    @Test
+    fun `too many photos is reported before a duplicate among them`() {
+        val photos = (1..5).map { photoId("ph_1") }
+        val outcome = draft().describe(nesterId(), description(), photos, describedAt)
+        assertEquals(CaseError.TooManyPhotos(5, 4), assertIs<Outcome.Err<CaseError>>(outcome).error)
+    }
+
+    @Test
+    fun `a duplicate photo is reported before a description time before creation`() {
+        val photos = listOf(photoId("ph_a"), photoId("ph_a"))
+        val before = Instant.parse("2026-09-24T09:00:00Z")
+        val outcome = draft().describe(nesterId(), description(), photos, before)
+        assertEquals(CaseError.DuplicatePhoto(1), assertIs<Outcome.Err<CaseError>>(outcome).error)
+    }
+
+    @Test
+    fun `the owner check is reported before a duplicate photo`() {
+        val photos = listOf(photoId("ph_a"), photoId("ph_a"))
+        val outcome = draft().describe(nesterId("ns_intruder"), description(), photos, describedAt)
+        assertEquals(CaseError.NotOwner, assertIs<Outcome.Err<CaseError>>(outcome).error)
     }
 
     @Test
