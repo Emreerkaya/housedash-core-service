@@ -1,0 +1,137 @@
+package com.housedash.domain.case
+
+import java.lang.reflect.Constructor
+import java.lang.reflect.InvocationTargetException
+import java.lang.reflect.Modifier
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertIs
+import kotlin.test.assertTrue
+
+class UnrepresentableStateTest {
+    private val variants = listOf(DraftCase::class.java, DescribedCase::class.java)
+
+    @Test
+    fun `the case hierarchy is sealed to exactly the two drawn states`() {
+        val permitted =
+            Case::class.java.permittedSubclasses
+                .orEmpty()
+                .map { it.name }
+                .toSet()
+        assertEquals(variants.map { it.name }.toSet(), permitted)
+    }
+
+    @Test
+    fun `no constructor of any case variant accepts the state as an argument`() {
+        variants.forEach { variant ->
+            variant.declaredConstructors.forEach { constructor ->
+                assertFalse(
+                    constructor.parameterTypes.any { it == CaseState::class.java },
+                    "${variant.name} takes a state argument",
+                )
+            }
+        }
+    }
+
+    @Test
+    fun `a draft has no description slot at all, on the interface or on the class`() {
+        val accessors = setOf("getDescription", "getDescribedAt", "getPhotos")
+        assertTrue(Case::class.java.methods.none { it.name in accessors })
+        assertTrue(DraftCase::class.java.methods.none { it.name in accessors })
+        assertTrue(
+            DescribedCase::class.java.methods
+                .map { it.name }
+                .containsAll(accessors),
+        )
+    }
+
+    @Test
+    fun `describe exists only on a draft, so describing twice cannot be written`() {
+        assertTrue(DraftCase::class.java.methods.any { it.name == "describe" })
+        assertFalse(DescribedCase::class.java.methods.any { it.name == "describe" })
+        assertFalse(Case::class.java.methods.any { it.name == "describe" })
+    }
+
+    @Test
+    fun `no case variant, description or identifier exposes copy`() {
+        val types =
+            variants + listOf(Description::class.java, CaseId::class.java, PhotoId::class.java, NesterId::class.java)
+        types.forEach { type ->
+            assertFalse(type.methods.any { it.name == "copy" }, "${type.name} exposes copy")
+        }
+    }
+
+    @Test
+    fun `the described case has one constructor and every parameter of it is required`() {
+        val constructor = DescribedCase::class.java.declaredConstructors.single()
+        assertEquals(6, constructor.parameterCount)
+        assertTrue(Modifier.isPublic(constructor.modifiers))
+        val arguments =
+            arrayOf<Any?>(caseId(), nesterId(), createdAt, description(), listOf(photoId()), describedAt)
+        arguments.indices.forEach { position ->
+            val withNull = arguments.copyOf()
+            withNull[position] = null
+            assertIs<NullPointerException>(
+                thrownBy(constructor, withNull),
+                "argument $position accepted null",
+            )
+        }
+    }
+
+    @Test
+    fun `the described case constructor accepts the complete argument list`() {
+        val constructor = DescribedCase::class.java.declaredConstructors.single()
+        val built =
+            constructor.newInstance(caseId(), nesterId(), createdAt, description(), listOf(photoId()), describedAt)
+        assertIs<DescribedCase>(built)
+        assertEquals(CaseState.DESCRIBED, built.state)
+    }
+
+    @Test
+    fun `the draft constructor rejects a null owner`() {
+        val constructor = DraftCase::class.java.declaredConstructors.single()
+        assertIs<NullPointerException>(thrownBy(constructor, arrayOf(caseId(), null, createdAt)))
+    }
+
+    @Test
+    fun `the public synthetic constructor of Description cannot build an empty description`() {
+        val constructor = Description::class.java.constructors.single()
+        assertTrue(Modifier.isPublic(constructor.modifiers))
+        assertIs<IllegalArgumentException>(thrownBy(constructor, arrayOf("", null)))
+    }
+
+    @Test
+    fun `the public synthetic constructor of Description cannot build one holding contact details`() {
+        val constructor = Description::class.java.constructors.single()
+        assertIs<IllegalArgumentException>(
+            thrownBy(constructor, arrayOf("call me on 917-555-0199 about the tap", null)),
+        )
+    }
+
+    @Test
+    fun `the public synthetic constructor of each identifier cannot build a malformed value`() {
+        val malformed = listOf("", "'; drop table cases; --", "../../etc/passwd", "x".repeat(1_000))
+        listOf(CaseId::class.java, PhotoId::class.java, NesterId::class.java).forEach { type ->
+            val constructor = type.constructors.single()
+            assertTrue(Modifier.isPublic(constructor.modifiers))
+            malformed.forEach { raw ->
+                assertIs<IllegalArgumentException>(
+                    thrownBy(constructor, arrayOf(raw, null)),
+                    "${type.name} accepted a malformed value",
+                )
+            }
+        }
+    }
+
+    private fun thrownBy(
+        constructor: Constructor<*>,
+        arguments: Array<Any?>,
+    ): Throwable =
+        try {
+            constructor.newInstance(*arguments)
+            error("construction succeeded when it should have failed")
+        } catch (invocation: InvocationTargetException) {
+            invocation.targetException
+        }
+}
