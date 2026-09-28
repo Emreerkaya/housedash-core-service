@@ -2,7 +2,6 @@ name: process-mr
 
 on:
   pull_request:
-    branches: [main]
 
 concurrency:
   group: mr-${{ github.event.pull_request.number }}
