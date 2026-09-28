@@ -18,20 +18,58 @@ if [ -z "$changed" ]; then
     exit 2
 fi
 
+invariant_bearing='^src/[^/]+/kotlin/com/housedash/domain/'
+if ! git ls-files | grep -Eq "$invariant_bearing"; then
+    printf 'no file in this checkout matches %s, so the invariants trigger can no longer see the layer it guards; update this pattern\n' "$invariant_bearing" >&2
+    exit 2
+fi
+
 required=(architecture security testing performance)
-if printf '%s\n' "$changed" | grep -Eq '^src/main/kotlin/com/housedash/domain/(money|quote|booking|review)/'; then
+if printf '%s\n' "$changed" | grep -Eq "$invariant_bearing"; then
     required+=(invariants)
 fi
 
-reviews=$(gh api graphql -f query='
-  query($owner:String!,$repo:String!,$pr:Int!){
+reviews=$(gh api graphql --paginate --slurp -f query='
+  query($owner:String!,$repo:String!,$pr:Int!,$endCursor:String){
     repository(owner:$owner,name:$repo){ pullRequest(number:$pr){
-      reviews(last:50){ nodes{ body } }
-      reviewThreads(last:100){ nodes{ isResolved comments(first:1){ nodes{ body } } } }
-    }}}' -F owner="$owner" -F repo="$repo" -F pr="$pr")
+      reviews(first:100, after:$endCursor){
+        pageInfo{ hasNextPage endCursor }
+        nodes{
+          state
+          authorAssociation
+          authorCanPushToRepository
+          author{ login __typename }
+          body
+        }
+      }
+    }}}' -F owner="$owner" -F repo="$repo" -F pr="$pr" \
+    | jq '[.[].data.repository.pullRequest.reviews.nodes[]]')
+
+threads=$(gh api graphql --paginate --slurp -f query='
+  query($owner:String!,$repo:String!,$pr:Int!,$endCursor:String){
+    repository(owner:$owner,name:$repo){ pullRequest(number:$pr){
+      reviewThreads(first:100, after:$endCursor){
+        pageInfo{ hasNextPage endCursor }
+        nodes{ isResolved }
+      }
+    }}}' -F owner="$owner" -F repo="$repo" -F pr="$pr" \
+    | jq '[.[].data.repository.pullRequest.reviewThreads.nodes[]]')
+
+entitled='.author != null
+    and .author.__typename == "User"
+    and .authorCanPushToRepository == true
+    and (.authorAssociation | IN("OWNER", "MEMBER", "COLLABORATOR"))
+    and (.state | IN("COMMENTED", "APPROVED"))'
+
+while read -r login association push state; do
+    [ -z "${login:-}" ] && continue
+    printf 'ignored: review by %s (association %s, can push %s, state %s) is not entitled to gate a merge here\n' \
+        "$login" "$association" "$push" "$state" >&2
+done < <(printf '%s' "$reviews" | jq -r \
+    ".[] | select((${entitled}) | not) | [(.author.login // \"(deleted)\"), .authorAssociation, (.authorCanPushToRepository | tostring), .state] | @tsv")
 
 trailers=$(printf '%s' "$reviews" \
-    | jq -r '.data.repository.pullRequest.reviews.nodes[].body' \
+    | jq -r ".[] | select(${entitled}) | .body" \
     | grep -oE '<!--[[:space:]]*review-sha:[[:space:]]*[0-9a-f]{7,40}[[:space:]]+dimension:[[:space:]]*[a-z]+[[:space:]]+verdict:[[:space:]]*[a-z]+[[:space:]]*-->' \
     || true)
 
@@ -47,7 +85,7 @@ fail=0
 
 for dimension in "${required[@]}"; do
     if ! printf '%s' "$at_head" | grep -q "^${dimension} "; then
-        printf 'missing: no %s review at %s\n' "$dimension" "${head_sha:0:8}" >&2
+        printf 'missing: no %s review at %s from an author entitled to gate a merge\n' "$dimension" "${head_sha:0:8}" >&2
         fail=1
     fi
 done
@@ -60,12 +98,12 @@ while read -r dimension verdict; do
     fi
 done < <(printf '%s' "$at_head")
 
-unresolved=$(printf '%s' "$reviews" | jq '[.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved == false)] | length')
+unresolved=$(printf '%s' "$threads" | jq '[.[] | select(.isResolved == false)] | length')
 if [ "$unresolved" -gt 0 ]; then
     printf 'note: %s unresolved thread(s); the ruleset blocks the merge on these, not this check\n' "$unresolved" >&2
 fi
 
 if [ "$fail" -eq 0 ]; then
-    printf 'every required dimension (%s) reviewed at %s, none blocked\n' "${required[*]}" "${head_sha:0:8}"
+    printf 'every required dimension (%s) reviewed at %s by an entitled author, none blocked\n' "${required[*]}" "${head_sha:0:8}"
 fi
 exit "$fail"
