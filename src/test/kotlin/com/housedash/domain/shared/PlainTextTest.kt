@@ -72,11 +72,6 @@ class PlainTextTest {
     }
 
     @Test
-    fun `an unassigned code point is not plain text`() {
-        assertFalse(isPlainText("tap \u0378 drips"))
-    }
-
-    @Test
     fun `a line separator is not plain text`() {
         assertFalse(isPlainText("tap\u2028drips"))
     }
@@ -89,6 +84,55 @@ class PlainTextTest {
     @Test
     fun `a well formed surrogate pair is plain text`() {
         assertTrue(isPlainText("the tap leaks \uD83D\uDE00"))
+    }
+
+    @Test
+    fun `an emoji newer than the running jdk's unicode version is plain text`() {
+        listOf(
+            "the plumber needs a \uD83E\uDE8F for the drain",
+            "i look like this now \uD83E\uDEE9",
+            "the leak left a \uD83E\uDEC6 on the wall",
+            "a \uD83E\uDE89 would be more use than this boiler",
+        ).forEach { text ->
+            assertTrue(isPlainText(text), text)
+        }
+    }
+
+    @Test
+    fun `a code point no unicode version has assigned yet is plain text`() {
+        assertTrue(isPlainText("tap \u0378 drips"))
+    }
+
+    @Test
+    fun `an emoji joined by a zero width joiner is plain text`() {
+        listOf(
+            "the \uD83E\uDDD1\u200D\uD83D\uDD27 is coming tomorrow",
+            "my \uD83D\uDC68\u200D\uD83D\uDC69\u200D\uD83D\uDC67 cannot shower",
+            "the boiler is \u2764\uFE0F\u200D\uD83D\uDD25 at this point",
+            "the \uD83C\uDFF3\uFE0F\u200D\uD83C\uDF08 sticker is on the door",
+        ).forEach { text ->
+            assertTrue(isPlainText(text), text)
+        }
+    }
+
+    @Test
+    fun `a zero width joiner that joins nothing is not plain text`() {
+        assertFalse(isPlainText("\u200Dtap drips"))
+        assertFalse(isPlainText("tap drips\u200D"))
+        assertFalse(isPlainText("tap\u200D\u200Ddrips"))
+        assertFalse(isPlainText("tap \u200Ddrips"))
+        assertFalse(isPlainText("tap\u200D drips"))
+    }
+
+    @Test
+    fun `zero width joiners cannot be used as invisible padding`() {
+        assertFalse(isPlainText("tap" + "\u200D".repeat(30)))
+        assertFalse(isPlainText("tap" + "\u200D ".repeat(30)))
+    }
+
+    @Test
+    fun `a zero width joiner between letters is plain text`() {
+        assertTrue(isPlainText("tap\u200Ddrips"))
     }
 
     @Test
