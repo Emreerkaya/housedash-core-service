@@ -106,11 +106,44 @@ tasks.register("verifyIntegrationTestSourceSetNotEmpty") {
     group = "verification"
     val integrationSource = sourceSets["integrationTest"].allSource
     inputs.files(integrationSource)
+    outputs.file(layout.buildDirectory.file("reports/integration-source/verified.txt"))
     doLast {
         if (integrationSource.isEmpty) {
             throw GradleException(
                 "src/integrationTest has no source files; a NO-SOURCE integrationTest run must not pass as green",
             )
+        }
+        outputs.files.singleFile.apply {
+            parentFile.mkdirs()
+            writeText("integrationTest source set holds ${integrationSource.files.size} files\n")
+        }
+    }
+}
+
+tasks.register("verifyNoSuppressions") {
+    group = "verification"
+    val kotlinSource = files(sourceSets.flatMap { it.allSource.matching { include("**/*.kt") } })
+    val forbidden = listOf("@Suppress", "@file:Suppress", "detekt-disable", "ktlint-disable")
+    inputs.files(kotlinSource)
+    outputs.file(layout.buildDirectory.file("reports/suppressions/verified.txt"))
+    doLast {
+        val offences = mutableListOf<String>()
+        for (file in kotlinSource.files) {
+            for ((index, line) in file.readLines().withIndex()) {
+                if (forbidden.any { line.contains(it) }) {
+                    offences.add("${file.path}:${index + 1}: ${line.trim()}")
+                }
+            }
+        }
+        if (offences.isNotEmpty()) {
+            throw GradleException(
+                "suppressions are not used in this codebase; if a rule objects, the code changes:\n" +
+                    offences.joinToString("\n"),
+            )
+        }
+        outputs.files.singleFile.apply {
+            parentFile.mkdirs()
+            writeText("no suppressions in ${kotlinSource.files.size} kotlin files\n")
         }
     }
 }
@@ -119,4 +152,5 @@ tasks.check {
     dependsOn(tasks.named("integrationTest"))
     dependsOn(tasks.jacocoTestCoverageVerification)
     dependsOn(tasks.named("verifyIntegrationTestSourceSetNotEmpty"))
+    dependsOn(tasks.named("verifyNoSuppressions"))
 }
