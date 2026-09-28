@@ -1,0 +1,28 @@
+name: process-merge
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: merge-main
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-jvm
+      - run: ./gradlew check
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: merge-reports
+          path: |
+            build/reports/
+            build/test-results/
+          if-no-files-found: ignore
