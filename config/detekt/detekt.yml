@@ -1,0 +1,34 @@
+build:
+  maxIssues: 0
+
+complexity:
+  LongMethod:
+    threshold: 30
+  LongParameterList:
+    functionThreshold: 6
+    constructorThreshold: 7
+  TooManyFunctions:
+    thresholdInClasses: 15
+    thresholdInFiles: 15
+  CyclomaticComplexMethod:
+    threshold: 10
+  NestedBlockDepth:
+    threshold: 4
+
+style:
+  MaxLineLength:
+    maxLineLength: 120
+  MagicNumber:
+    ignorePropertyDeclaration: true
+    ignoreCompanionObjectPropertyDeclaration: true
+  ForbiddenComment:
+    active: true
+    comments:
+      - reason: "Comments are not used in this codebase. Names and structure carry the meaning; rationale belongs in an ADR."
+        value: "(?s).+"
+  ReturnCount:
+    max: 5
+
+exceptions:
+  TooGenericExceptionCaught:
+    active: true
