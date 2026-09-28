@@ -1,0 +1,14 @@
+name: setup-jvm
+description: Provision the JVM toolchain, the Gradle cache and just. The repository must already be checked out.
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-java@v6
+      with:
+        distribution: temurin
+        java-version: 21
+
+    - uses: gradle/actions/setup-gradle@v6
+
+    - uses: extractions/setup-just@v4
