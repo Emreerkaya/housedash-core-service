@@ -13,8 +13,14 @@ test:
     ./gradlew verifyIntegrationTestSourceSetNotEmpty test integrationTest
 
 sonar:
+    #!/usr/bin/env bash
+    set -euo pipefail
     ./gradlew jacocoTestReport jacocoTestCoverageVerification
-    command -v gitleaks >/dev/null 2>&1 && gitleaks detect --no-banner --redact || echo "gitleaks not installed locally; the pull request workflow enforces it"
+    if command -v gitleaks >/dev/null 2>&1; then
+        gitleaks detect --no-banner --redact
+    else
+        printf 'gitleaks is not installed locally, so secrets were not scanned here; the gitleaks job on the pull request is the enforcing copy\n' >&2
+    fi
 
 commits base="origin/main":
     scripts/check-commits.sh {{base}}
