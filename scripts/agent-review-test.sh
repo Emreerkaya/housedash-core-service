@@ -66,7 +66,7 @@ all_five=$(set_of \
 pass=0
 fail=0
 names=''
-cases_this_suite_runs=56
+cases_this_suite_runs=62
 
 check() {
     local name=$1 want=$2 changed=$3 reviews=$4 wanted_text=${5:-} threads=${6:-[]} unwanted_text=${7:-}
@@ -101,14 +101,14 @@ check 'five clean reviews on a domain diff pass' 0 "$touched_domain" "$all_five"
 check 'four clean reviews pass when the diff avoids the domain layer' 0 "$untouched" "$four_dimensions" \
     'architecture security testing performance'
 
-check 'a domain diff without an invariants review is blocked' 1 "$touched_domain" "$four_dimensions" \
+check 'a domain diff without an invariants review is pending, not a refusal' 3 "$touched_domain" "$four_dimensions" \
     'missing: no invariants review'
 
-check 'a missing architecture review blocks' 1 "$untouched" \
+check 'a missing architecture review is pending' 3 "$untouched" \
     "$(set_of "$(review security clean)" "$(review testing clean)" "$(review performance clean)")" \
     'missing: no architecture review'
 
-check 'a missing performance review blocks' 1 "$untouched" \
+check 'a missing performance review is pending' 3 "$untouched" \
     "$(set_of "$(review architecture clean)" "$(review security clean)" "$(review testing clean)")" \
     'missing: no performance review'
 
@@ -120,15 +120,15 @@ check 'a verdict misspelled by one character fails closed rather than reading as
     "$(set_of "$(review architecture cleann)" "$(review security clean)" "$(review testing clean)" "$(review performance clean)")" \
     'is not one of the verdicts'
 
-check 'a review at a stale sha does not count' 1 "$untouched" \
+check 'a review at a stale sha does not count, leaving that dimension pending' 3 "$untouched" \
     "$(set_of "$(review architecture clean "$other")" "$(review security clean)" "$(review testing clean)" "$(review performance clean)")" \
     'missing: no architecture review'
 
-check 'a review by an author who cannot push is ignored' 1 "$untouched" \
+check 'a review by an author who cannot push is ignored, leaving that dimension pending' 3 "$untouched" \
     "$(set_of "$(review architecture clean "$sha" false)" "$(review security clean)" "$(review testing clean)" "$(review performance clean)")" \
     'is not entitled to gate a merge'
 
-check 'a review by a drive-by contributor is ignored' 1 "$untouched" \
+check 'a review by a drive-by contributor is ignored, leaving that dimension pending' 3 "$untouched" \
     "$(set_of "$(review architecture clean "$sha" true CONTRIBUTOR)" "$(review security clean)" "$(review testing clean)" "$(review performance clean)")" \
     'is not entitled to gate a merge'
 
@@ -156,29 +156,29 @@ check 'a blocked verdict from a collaborator blocks' 1 "$untouched" \
     "$(set_of "$(review architecture blocked "$sha" true COLLABORATOR)" "$(review security clean)" "$(review testing clean)" "$(review performance clean)")" \
     'reports verdict blocked'
 
-check 'a trailer that is not the last line does not count' 1 "$untouched" \
+check 'a trailer that is not the last line does not count, leaving that dimension pending' 3 "$untouched" \
     "$(set_of "$(review architecture clean "$sha" true OWNER 'and one more thought afterwards')" "$(review security clean)" "$(review testing clean)" "$(review performance clean)")" \
     'missing: no architecture review'
 
-check 'a trailer naming only a sha prefix does not count' 1 "$untouched" \
+check 'a trailer naming only a sha prefix does not count, leaving that dimension pending' 3 "$untouched" \
     "$(set_of "$(review architecture clean 1111111)" "$(review security clean)" "$(review testing clean)" "$(review performance clean)")" \
     'missing: no architecture review'
 
-check 'a path git quotes still requires the invariants review' 1 \
+check 'a path git quotes still requires the invariants review' 3 \
     '"src/main/kotlin/com/housedash/domain/shared/Gr\303\266\303\237e.kt"' \
     "$four_dimensions" 'missing: no invariants review'
 
-check 'a diff of the gate itself still requires the security review' 1 \
+check 'a diff of the gate itself still requires the security review' 3 \
     'scripts/agent-review.sh' \
     "$(set_of "$(review architecture clean)" "$(review testing clean)" "$(review performance clean)")" \
     'missing: no security review'
 
-check 'a diff of the workflows still requires the security review' 1 \
+check 'a diff of the workflows still requires the security review' 3 \
     '.github/workflows/process-review.yml' \
     "$(set_of "$(review architecture clean)" "$(review testing clean)" "$(review performance clean)")" \
     'missing: no security review'
 
-check 'the security review is required whatever the diff touches' 1 "$untouched" \
+check 'the security review is required whatever the diff touches' 3 "$untouched" \
     "$(set_of "$(review architecture clean)" "$(review testing clean)" "$(review performance clean)")" \
     'missing: no security review'
 
@@ -201,11 +201,11 @@ check 'a CHANGES_REQUESTED review carrying blocked still blocks' 1 "$untouched" 
     "$(set_of "$(review_as CHANGES_REQUESTED User architecture blocked)" "$(review security clean)" "$(review testing clean)" "$(review performance clean)")" \
     'reports verdict blocked'
 
-check 'a DISMISSED review does not count' 1 "$untouched" \
+check 'a DISMISSED review does not count' 3 "$untouched" \
     "$(set_of "$(review_as DISMISSED User architecture clean)" "$(review security clean)" "$(review testing clean)" "$(review performance clean)")" \
     'is not entitled to gate a merge'
 
-check 'a review by a bot does not count' 1 "$untouched" \
+check 'a review by a bot does not count' 3 "$untouched" \
     "$(set_of "$(review_as COMMENTED Bot architecture clean)" "$(review security clean)" "$(review testing clean)" "$(review performance clean)")" \
     'is not entitled to gate a merge'
 
@@ -225,11 +225,11 @@ check 'a verdict with trailing punctuation is malformed rather than invisible' 1
     "$(set_of "$(review architecture clean)" "$(review security clean)" "$(review testing clean)" "$(review performance clean)" "$(review invariants 'blocked.')")" \
     'is not one of the verdicts'
 
-check 'a misspelled dimension is noted and not counted rather than blocking' 1 "$untouched" \
+check 'a misspelled dimension is noted and not counted, leaving the real one pending' 3 "$untouched" \
     "$(set_of "$(review architeture clean)" "$(review security clean)" "$(review testing clean)" "$(review performance clean)")" \
     'missing: no architecture review'
 
-check 'a dimension holding a regex metacharacter reads as missing, it does not satisfy the real one' 1 "$untouched" \
+check 'a dimension holding a regex metacharacter reads as missing, it does not satisfy the real one' 3 "$untouched" \
     "$(set_of "$(review 'a.chitecture' clean)" "$(review security clean)" "$(review testing clean)" "$(review performance clean)")" \
     'missing: no architecture review'
 
@@ -241,7 +241,7 @@ check 'a body with CRLF line endings still counts, as the web UI sends them' 0 "
         "$(review security clean)" "$(review testing clean)" "$(review performance clean)")" \
     'none blocked'
 
-check 'no reviews at all blocks' 1 "$untouched" '[]' 'missing: no architecture review'
+check 'no reviews at all does not pass' 3 "$untouched" '[]' 'missing: no architecture review'
 
 for short in 1111111 111111111111111111111111111111111111111 11111111111111111111111111111111111111111 \
     ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ 111111111111111111111111111111111111111g; do
@@ -319,15 +319,15 @@ probe_repo 'a checkout no trigger pattern matches refuses to run at all' \
 probe_repo 'a checkout whose domain layer moved refuses to run even though the rest is there' \
     'can no longer see the layer it guards' README.md scripts/agent-review.sh .github/workflows/process-review.yml
 
-check 'a trailer sha one character too long reads as missing, though the trailer length clause alone cannot be isolated because HEAD_SHA is already forty lowercase hex' 1 "$untouched" \
+check 'a trailer sha one character too long reads as missing, though the trailer length clause alone cannot be isolated because HEAD_SHA is already forty lowercase hex' 3 "$untouched" \
     "$(set_of "$(review architecture clean "${sha}1")" "$(review security clean)" "$(review testing clean)" "$(review performance clean)")" \
     'missing: no architecture review'
 
-check 'a trailer sha that is not hexadecimal reads as missing' 1 "$untouched" \
+check 'a trailer sha that is not hexadecimal reads as missing' 3 "$untouched" \
     "$(set_of "$(review architecture clean zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz)" "$(review security clean)" "$(review testing clean)" "$(review performance clean)")" \
     'missing: no architecture review'
 
-check 'a dimension name with the required one as its tail does not satisfy the requirement' 1 "$untouched" \
+check 'a dimension name with the required one as its tail does not satisfy the requirement' 3 "$untouched" \
     "$(set_of "$(review architecture clean)" "$(review xsecurity clean)" "$(review testing clean)" "$(review performance clean)")" \
     'missing: no security review'
 
@@ -348,6 +348,27 @@ check 'a renamed isResolved field is refused rather than silently counted as zer
 
 check 'an isResolved that is not a boolean is refused rather than silently counted as zero' 2 "$untouched" \
     "$four_dimensions" 'measured nothing' '[{"isResolved":"maybe"}]'
+
+check 'no dimension has posted, so the round is pending and every required dimension is named' 3 "$untouched" '[]' \
+    'waiting for architecture security testing performance'
+
+check 'some dimensions have posted, so only the ones still missing are named' 3 "$untouched" \
+    "$(set_of "$(review architecture clean)" "$(review security clean)")" \
+    'waiting for testing performance' '[]' 'waiting for architecture'
+
+check 'a domain diff waiting only on invariants names invariants alone' 3 "$touched_domain" \
+    "$four_dimensions" 'waiting for invariants' '[]' 'waiting for architecture'
+
+check 'every required dimension posted and clean is a pass, not a pending round' 0 "$touched_domain" \
+    "$all_five" 'none blocked' '[]' 'pending:'
+
+check 'a blocked verdict is a refusal even while another dimension has not posted' 1 "$untouched" \
+    "$(set_of "$(review architecture blocked)" "$(review security clean)")" \
+    'reports verdict blocked' '[]' 'pending:'
+
+check 'a malformed verdict is a refusal, not a pending round' 1 "$untouched" \
+    "$(set_of "$(review architecture cleann)" "$(review security clean)" "$(review testing clean)" "$(review performance clean)")" \
+    'is not one of the verdicts' '[]' 'pending:'
 
 printf '\n%s passed, %s failed\n' "$pass" "$fail"
 

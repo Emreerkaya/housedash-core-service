@@ -93,12 +93,13 @@ while read -r sha dimension verdict; do
     fi
 done < <(printf '%s\n' "$trailers")
 
-fail=0
+blocking=0
+pending=''
 
 for dimension in "${required[@]}"; do
     if ! printf '%s' "$at_head" | grep -q "^${dimension} "; then
         printf 'missing: no %s review at %s from an author entitled to gate a merge\n' "$dimension" "${head_sha:0:8}" >&2
-        fail=1
+        pending="${pending}${pending:+ }${dimension}"
     fi
 done
 
@@ -113,12 +114,12 @@ while read -r dimension verdict; do
             ;;
         blocked)
             printf 'blocked: %s review at %s reports verdict blocked\n' "$dimension" "${head_sha:0:8}" >&2
-            fail=1
+            blocking=1
             ;;
         *)
             printf 'malformed: %s review at %s reports verdict %s, which is not one of the verdicts the review format defines (%s); an undefined verdict fails closed rather than reading as clean, because a blocking verdict misspelled by one character used to pass\n' \
                 "$dimension" "${head_sha:0:8}" "$verdict" "${defined_verdicts[*]}" >&2
-            fail=1
+            blocking=1
             ;;
     esac
 done < <(printf '%s' "$at_head")
@@ -134,8 +135,15 @@ if [ "$unresolved" -gt 0 ]; then
     printf 'note: %s unresolved thread(s); the ruleset blocks the merge on these, not this check\n' "$unresolved" >&2
 fi
 
-if [ "$fail" -eq 0 ]; then
-    printf 'every required dimension (%s) reviewed at %s by an entitled author, every verdict one of %s and none blocked\n' \
-        "${required[*]}" "${head_sha:0:8}" "${defined_verdicts[*]}"
+if [ "$blocking" -ne 0 ]; then
+    exit 1
 fi
-exit "$fail"
+
+if [ -n "$pending" ]; then
+    printf 'pending: this round has not finished; waiting for %s at %s. Nothing here is blocked or malformed, so this is neither a pass nor a refusal\n' \
+        "$pending" "${head_sha:0:8}"
+    exit 3
+fi
+
+printf 'every required dimension (%s) reviewed at %s by an entitled author, every verdict one of %s and none blocked\n' \
+    "${required[*]}" "${head_sha:0:8}" "${defined_verdicts[*]}"
