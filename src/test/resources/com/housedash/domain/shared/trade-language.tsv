@@ -1,0 +1,75 @@
+family	input	why
+decimal-list	the drill bits I need are 1.5, 2.5, 3.5, 4.5, 5.5 mm for the bracket	ten single digits, comma-grouped, no number
+decimal-list	torque them to 1.2, 1.4, 1.6, 1.8, 2.0 Nm in sequence	a torque schedule reads as a digit run
+decimal-list	0.5, 1.0, 1.5, 2.0, 2.5, 3.0 mm shims are what I have on hand	twelve digits once the marks are dropped
+decimal-list	the gauge sat at 0.8, then 1.1, then 1.4 bar over ten minutes	three decimals and a count
+decimal-list	I measured 12.5, 13.0 and 13.5 amps across the three legs	a load reading
+decimal-list	the gap should be 0.6 to 0.9 mm and mine reads 1.3	a tolerance range
+fraction-list	I need 1/2, 3/4, 3/8, 5/8, 7/8 fittings for the bathroom job please	the shape that regressed
+fraction-list	1/2", 3/4", 3/8", 5/8", 7/8" compression fittings needed for the job	the same with inch marks
+fraction-list	the old pipe is 1/2 inch and the new run has to be 3/4	two fractions
+fraction-list	is a 7/16 or a 1/2 socket right for the boiler cover bolts	a tool question
+fraction-list	the washers went 1/4, 5/16, 3/8, 7/16, 1/2 in the drawer	five fractions
+version-string	the firmware went 1.2.3, 1.2.4, 1.3.0, 2.0.1 before the boiler died	a version history
+version-string	controller firmware 3.14.159 is what the display shows	one dotted version
+version-string	app version 2.0.1 and the thermostat says 1.4.22	two versions
+ratio	concrete mix ratios 1:2:4, 1:3:6, 1:1:2, 1:2:3 for the slab	colon-grouped digit runs
+ratio	the gearbox is 3:1 and the old one was 5:2	two ratios
+ratio	mix it 1:2:4 1:3:6 1:1:2 1:2:3 depending on the pour	space-and-colon grouping
+dimension	2x4, 2x6, 4x4, 6x6, 2x8 lumber for the deck frame	an American lumber list
+dimension	I need 2 x 4 and 2 x 6 for the joists, eight of each	spaced dimensions
+dimension	the opening is 900 x 2100 x 45 mm and the door is 890 x 2090	six groups of digits
+dimension	tiles are 300 x 600, the old ones were 200 x 200	tile sizes
+dip-switch	the dip switches are set 1, 0, 1, 1, 0, 0, 1, 0, 1, 1 on the board	ten single digits, comma-separated
+dip-switch	switches read 1 0 1 1 0 0 1 0 1 1 left to right	the same, space-separated
+dip-switch	I flipped 3, 5 and 7 and the fault cleared for a minute	three positions
+serial-part	serial +987654321 stamped underneath the casing	the plus-prefix false positive
+serial-part	the part number is +123 4567 89012 on the sticker	plus with three groups
+serial-part	model BX-4472-A and serial 9081726354 on the rating plate	a ten-digit serial
+serial-part	the plate reads 9175550199 and nothing else	a bare ten-digit run with no cue
+serial-part	part 30 2145 0067 is the one the manual lists	four groups
+serial-part	the barcode under the lid is 4 006381 333931	a thirteen-digit EAN
+serial-part	replacement cartridge is 1 2 3 4 5 6 7 8 9 0 on the old box	ten single digits
+sort-verb	can you sort 20, 30, 40 amp fuses for the consumer unit	sort as a verb, not a bank code
+sort-verb	sort 12, 15, 18 mm washers into bags before you come	the same
+sort-verb	please sort 10 - 20 - 30 of the tiles by size before you come	sort with dashed groups
+sort-verb	could you sort out the 1/2 and 3/4 fittings when you arrive	sort plus fractions
+sort-verb	sort code on the boiler label is what I cannot read	the words present, no digits
+code-word	the error code is 1 2 3 4 5 6 7 8 9 0 flashing in order	code as an ordinary word
+code-word	fault code F28 then F75 then F28 again	alphanumeric codes
+code-word	the code on the keypad is four digits and I forgot it	code with no digits
+quantity	I need 1,500; 2,300; 3,100 of them for the three floors	semicolon thousands
+quantity	quotes came in at 1,200, 1,800, 2,400 and none included parts	comma thousands
+quantity	the invoice was 1,250.00 and the deposit 400.00	money with marks
+quantity	100, 150, 2000 mm lengths are what the merchant stocks	a three-group quantity list
+quantity	eight of the 15 mm and twelve of the 22 mm please	counts and sizes
+measurement	the run is 3 m then 1.5 m then 750 mm to the stack	mixed units
+measurement	pressure was 1.5 bar cold and 2.8 bar hot this morning	two readings
+measurement	it draws 13 A on start and settles at 4 A	current readings
+measurement	the flow is 9 l/min and it should be 12	a flow rate
+measurement	the tank is 210 litres and the cylinder 180	two volumes
+date-time	it failed on 12/03/2024 and again on 15/03/2024	two slashed dates
+date-time	between 9 and 11 on Tuesday works, or 2 to 4 on Thursday	a time window
+date-time	the warranty ran 2019 to 2024 so it is just out	a year range
+date-time	last serviced 03/2022 according to the sticker	a month and year
+date-time	any morning this week from 8, or 9 if that is easier	loose times
+model-number	the unit is a Vaillant ecoTEC plus 832 from about 2016	a model with digits
+model-number	Worcester Greenstar 30i and the pump is a Grundfos 15/50	two model numbers
+model-number	thermostat is a Honeywell T6 and the receiver BDR91	alphanumeric models
+model-number	the shower is a Mira 723 and the cartridge 451.12	model and part
+address-adjacent	it is the third floor, flat 4, and the buzzer sticks	floor and flat, no street
+address-adjacent	second door on the left once you are through the gate	directions with no number run
+address-adjacent	the meter cupboard is 2 along from the entrance	one number
+ordinary	kitchen tap drips from the base and the cupboard below is damp	a plain description
+ordinary	the radiator in the back bedroom is cold at the top	a plain description
+ordinary	boiler locks out after about ten minutes and shows a red light	a plain description
+ordinary	there is a damp patch spreading under the bathroom window	a plain description
+ordinary	the toilet runs on and I have to lift the lid to stop it	a plain description
+ordinary	an outside light stopped working and the switch feels loose	a plain description
+ordinary	half the sockets on the ground floor went dead this morning	a plain description
+ordinary	the extractor fan hums but the blades do not turn	a plain description
+ordinary	tiles above the hob have come away from the wall	a plain description
+ordinary	the front door does not latch unless you lift it	a plain description
+mixed	I need 1/2 and 3/4 fittings, the boiler is a 832, and any morning suits	fractions, a model and a time
+mixed	torque to 1.2 Nm, the part is 30 2145 0067, and it failed on 12/03/2024	torque, part number and a date
+mixed	sort 12, 15, 18 mm washers, serial +987654321, third floor flat 4	three regressed families at once
