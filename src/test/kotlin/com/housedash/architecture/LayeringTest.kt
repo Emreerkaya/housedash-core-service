@@ -414,6 +414,31 @@ class LayeringTest {
     }
 
     @Test
+    fun `the construction boundary guards the types this test names and not merely some type`() {
+        val matched =
+            domain
+                .filter { aggregateVariant.test(it) }
+                .map { it.name }
+                .toSortedSet()
+        assertTrue(matched == AGGREGATE_VARIANTS_BY_NAME.toSortedSet()) {
+            "the aggregate-variant predicate matches $matched and this test names " +
+                "$AGGREGATE_VARIANTS_BY_NAME. A type that quietly left the guarded set makes the predicate " +
+                "match a smaller non-empty set, which every assertion over its own matches reports as success"
+        }
+        val closed =
+            domain
+                .filter { closedConstruction.test(it) }
+                .map { it.name }
+                .toSortedSet()
+        assertTrue(closed == CLOSED_CONSTRUCTION_BY_NAME.toSortedSet()) {
+            "the closed-construction predicate matches $closed and this test names " +
+                "$CLOSED_CONSTRUCTION_BY_NAME; Kotlin's internal compiles to a plain public constructor with " +
+                "no synthetic flag, so a type can leave this set without any constructor becoming reachable " +
+                "by name"
+        }
+    }
+
+    @Test
     fun `both construction boundaries cover a real target rather than nothing`() {
         val variants = domain.filter { aggregateVariant.test(it) }
         assertTrue(variants.isNotEmpty()) {
@@ -440,5 +465,28 @@ class LayeringTest {
         const val COMPANION_OBJECT = "Companion"
 
         val READING_MEMBERS = setOf("getId", "getDescription", "getPhotos")
+
+        const val CASE_PACKAGE = "com.housedash.domain.case"
+
+        val AGGREGATE_VARIANTS_BY_NAME = setOf("$CASE_PACKAGE.DraftCase", "$CASE_PACKAGE.DescribedCase")
+
+        val CLOSED_CONSTRUCTION_BY_NAME =
+            setOf(
+                "$CASE_PACKAGE.Case\$Companion",
+                "$CASE_PACKAGE.CaseError\$DescriptionNotPlainText",
+                "$CASE_PACKAGE.CaseError\$NotOwner",
+                "$CASE_PACKAGE.CaseId",
+                "$CASE_PACKAGE.CaseId\$Companion",
+                "$CASE_PACKAGE.CasePhotos",
+                "$CASE_PACKAGE.CasePhotos\$Companion",
+                "$CASE_PACKAGE.DescribedCase",
+                "$CASE_PACKAGE.DescribedCase\$Companion",
+                "$CASE_PACKAGE.Description",
+                "$CASE_PACKAGE.Description\$Companion",
+                "$CASE_PACKAGE.DraftCase",
+                "$CASE_PACKAGE.DraftCase\$Companion",
+                "$CASE_PACKAGE.PhotoId",
+                "$CASE_PACKAGE.PhotoId\$Companion",
+            )
     }
 }
