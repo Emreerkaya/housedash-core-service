@@ -7,6 +7,11 @@ import kotlin.test.assertTrue
 
 private const val A_CHARACTER_NO_TABLE_HOLDS = '☃'
 
+private const val SEPARATORS_A_NUMBER_IS_WRITTEN_WITH =
+    " \t._/\\()[]-\u2212\u00B7\u2022\u2027\u30FB\u3002\uFF61\u00A0\u2013*|~#'=>!?&+@"
+
+private const val LETTERS_A_NUMBER_IS_NOT_GROUPED_BY = "xXoO"
+
 private val REPRESENTATIVE_OF_A_STRIPPED_CATEGORY =
     mapOf(
         CharCategory.FORMAT to '‍',
@@ -60,8 +65,6 @@ private const val CONFUSABLES_THE_FOLD_TABLE_HOLDS =
         "\u0422\u0425\u0405\u0406\u0408\u03B1\u03B3\u03B5\u03B9\u03BA\u03BC\u03BD\u03BF\u03C1" +
         "\u03C4\u03C5\u03C7\u0391\u0392\u0395\u0397\u0399\u039A\u039C\u039D\u039F\u03A1\u03A4" +
         "\u03A5\u03A7\u0131\u0251\u0585\u0578\u057D\u0570\u056C\u0566"
-
-private const val SEPARATORS_THE_TABLE_LISTS = "\t._/\\()[]\u2212\u00B7\u2022\u2027\u30FB"
 
 private const val DOTS_A_BRAND_MAY_BE_WRITTEN_WITH = ".\u00B7\u2022\u2027\u30FB"
 
@@ -165,11 +168,6 @@ class TableRowCoverageTest {
             "the confusable fold table",
         )
         assertTableHolds(
-            SEPARATORS_THE_TABLE_LISTS,
-            TablesTheGuardReads.separatorsBetweenDigitGroups,
-            "the separator table",
-        )
-        assertTableHolds(
             DOTS_A_BRAND_MAY_BE_WRITTEN_WITH,
             TablesTheGuardReads.dotsABrandMayBeWrittenWith,
             "the brand dot table",
@@ -244,29 +242,35 @@ class TableRowCoverageTest {
     }
 
     @Test
-    fun `every separator listed between digit groups groups a dialable number, and two of them are classes`() {
-        TablesTheGuardReads.separatorsBetweenDigitGroups.forEach { separator ->
+    fun `a separator between digit groups is anything but a letter, a digit and the thousands marks`() {
+        SEPARATORS_A_NUMBER_IS_WRITTEN_WITH.forEach { separator ->
             assertFinds(
                 ContactDetail.PhoneNumber,
                 "call me on 917${separator}555${separator}0199",
-                separator.toString(),
-                "the separator table",
+                separator.code.toString(),
+                "the rule that a separator is anything but a letter, a digit and the three thousands marks",
             )
         }
-        mapOf(' ' to "Zs", '–' to "Pd").forEach { (member, category) ->
-            assertFinds(
-                ContactDetail.PhoneNumber,
-                "call me on 917${member}555${member}0199",
-                "$member, a member of $category",
-                "the separator table's two Unicode categories, which are classes and not rows",
+    }
+
+    @Test
+    fun `the three marks the thousands arm owns are not separators, and a letter is not one either`() {
+        TablesTheGuardReads.PUNCTUATION_THE_THOUSANDS_ARM_OWNS.forEach { owned ->
+            assertFindsNothing(
+                "rated 10${owned}000$owned 12${owned}000 or 14${owned}000 BTU",
+                owned.toString(),
+                "the three marks the thousands arm owns, which the separator rule excludes on purpose so that a " +
+                    "thousands-grouped quantity list is read by the arm that knows that shape",
             )
         }
-        assertTrue(
-            contactDetailsIn("call me on 917${A_CHARACTER_NO_TABLE_HOLDS}555${A_CHARACTER_NO_TABLE_HOLDS}0199")
-                .isEmpty(),
-            "a character the separator table does not list now groups a number, so the cases above no longer " +
-                "show that the table is what reads the grouping",
-        )
+        LETTERS_A_NUMBER_IS_NOT_GROUPED_BY.forEach { letter ->
+            assertFindsNothing(
+                "reach me on 917${letter}555${letter}0199 this week",
+                letter.toString(),
+                "the separator rule excludes letters, so a letter between digit groups stays an open gap and is " +
+                    "pinned here as one",
+            )
+        }
     }
 
     @Test

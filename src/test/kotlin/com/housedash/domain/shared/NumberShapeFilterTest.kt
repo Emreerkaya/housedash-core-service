@@ -1,17 +1,40 @@
 package com.housedash.domain.shared
 
 import org.junit.jupiter.api.Test
-import kotlin.test.assertEquals
 
 class NumberShapeFilterTest {
-    private fun assertPhoneNumber(text: String) =
-        assertEquals(
-            setOf(ContactDetail.PhoneNumber),
-            contactDetailsIn(text),
-            text,
-        )
+    @Test
+    fun `a separator is anything but a letter, a digit and the three marks the thousands arm owns`() {
+        listOf(
+            "917\u3002555\u30020199",
+            "917\uFF61555\uFF610199",
+            "917*555*0199",
+            "917|555|0199",
+            "917~555~0199",
+            "917#555#0199",
+            "917'555'0199",
+            "917=555=0199",
+            "917>555>0199",
+            "917!555!0199",
+            "917?555?0199",
+            "917&555&0199",
+            "917+555+0199",
+            "917@555@0199",
+            "Water pours through the ceiling below, my cell is 917*555*0199",
+        ).forEach(::assertPhoneNumber)
+    }
 
-    private fun assertNothingFound(text: String) = assertEquals(emptySet(), contactDetailsIn(text), text)
+    @Test
+    fun `the separator rule reaches two false positive classes the space separated forms already had`() {
+        listOf(
+            "the meter reads 100 150 200 across the three dials",
+            "the meter reads 100 = 150 = 200 across the three dials",
+            "we paid 12 3450 6789 in total for the whole bathroom job",
+            "we paid 12 + 3450 + 6789 in total for the whole bathroom job",
+            "the pipe run is 917\u2044555\u20440199 mm of copper",
+        ).forEach(::assertPhoneNumber)
+        assertNothingFound("the meter reads 100 150 200 across the three gauges")
+    }
 
     @Test
     fun `a ten digit number is found whether its trunk digit joins the area code or the exchange`() {

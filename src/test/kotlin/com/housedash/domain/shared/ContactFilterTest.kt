@@ -7,15 +7,6 @@ import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class ContactFilterTest {
-    private fun assertPhoneNumber(text: String) =
-        assertEquals(
-            setOf(ContactDetail.PhoneNumber),
-            contactDetailsIn(text),
-            text,
-        )
-
-    private fun assertNothingFound(text: String) = assertEquals(emptySet(), contactDetailsIn(text), text)
-
     @Test
     fun `finds a phone number in every separator style`() {
         listOf(
@@ -629,7 +620,6 @@ class ContactFilterTest {
             "look me up, the business name is bobs plumbing",
             "bob at bobsplumbing.co.uk",
             "v.e.n.m.o me instead",
-            "the pipe run is 917\u2044555\u20440199 mm of copper",
             "c-a-s-h-a-p-p me instead",
             "the plate reads 9175550199 and nothing else",
             "pay me at cash=app instead of the platform",
