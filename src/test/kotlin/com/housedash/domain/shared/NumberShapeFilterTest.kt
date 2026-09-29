@@ -158,6 +158,33 @@ class NumberShapeFilterTest {
     }
 
     @Test
+    fun `the tail the run trims is one digit wide, and both sides of that boundary are chosen`() {
+        assertPhoneNumber("917-555-0199-1")
+        assertNothingFound("917-555-0199-01")
+        assertPhoneNumber("1-917-555-0199")
+        assertNothingFound("01-917-555-0199")
+        assertPhoneNumber("0141-445-2266-1 is my number")
+        assertNothingFound("0141-445-2266-01 is my number")
+        assertEquals(
+            listOf(true, false, true, false),
+            listOf(
+                isFound("917-555-0199-1"),
+                isFound("917-555-0199-01"),
+                isFound("1-917-555-0199"),
+                isFound("01-917-555-0199"),
+            ),
+            "the run trims single-digit padding from each end and asks again whether what is left is dialable, " +
+                "so a one-digit tail trims and a two-digit tail does not, at either end. The boundary is one " +
+                "character wide and it is a choice rather than an accident: trimming a two-digit tail would " +
+                "make every dialable run followed by a two-digit quantity into a phone number, and a stray " +
+                "single digit beside a number is a typo or a list index rather than part of it. Both sides of " +
+                "both ends are pinned here, so moving the trim moves this test. 0141 445 2266 is a real " +
+                "Glasgow number and its bare four-three-four grouping reaches nothing without a cue, which is " +
+                "why the pair above that uses it carries one",
+        )
+    }
+
+    @Test
     fun `a cued dialable number broken up by a list mark is caught, which is the conjunct this arm rests on`() {
         assertPhoneNumber("ring me on 123456,789, 555 for updates")
         assertNothingFound("quotes came in at 1,200, 1,800, 2,400 and none included parts")

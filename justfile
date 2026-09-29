@@ -15,7 +15,7 @@ test:
 sonar:
     #!/usr/bin/env bash
     set -euo pipefail
-    ./gradlew jacocoTestReport jacocoTestCoverageVerification
+    ./gradlew detektMain detektTest detektIntegrationTest jacocoTestReport jacocoTestCoverageVerification
     if command -v gitleaks >/dev/null 2>&1; then
         gitleaks detect --no-banner --redact
     else

@@ -317,6 +317,18 @@ class LayeringTest {
             .orShould()
             .haveRawParameterTypes(anyFloatingPointParameter)
             .check(domain)
+        val takingAFloatingPointArgument =
+            domain
+                .flatMap { it.constructors }
+                .filter { anyFloatingPointParameter.test(it.rawParameterTypes) }
+                .map { it.fullName }
+        assertTrue(takingAFloatingPointArgument.isEmpty()) {
+            "noFields and noMethods each leave constructors out, so a type taking a Double and never storing " +
+                "it passed both legs above: there is no field for the first to find and no method for the " +
+                "second. Money is integer minor units (D150) and the ban has to reach the place a rate or a " +
+                "factor would arrive, which is a constructor parameter. These constructors take a floating " +
+                "point parameter: $takingAFloatingPointArgument"
+        }
     }
 
     @Test
