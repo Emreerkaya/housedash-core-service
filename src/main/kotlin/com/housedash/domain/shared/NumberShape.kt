@@ -1,6 +1,6 @@
 package com.housedash.domain.shared
 
-private const val PHONE_SEPARATOR = TablesTheGuardReads.SEPARATOR_BETWEEN_TWO_DIGIT_GROUPS
+private const val PHONE_SEPARATOR_OR_NONE = TablesTheGuardReads.SEPARATOR_OR_NONE_BETWEEN_TWO_DIGIT_GROUPS
 
 private val PHONE_CUE =
     Regex("""(?i)\b(?:${TablesTheGuardReads.waysOfAskingToBeRung.joinToString("|")})\b""")
@@ -8,13 +8,11 @@ private val PHONE_CUE =
 private val NAMES_A_NUMBER_AS_SOMETHING_ELSE =
     "(?:" + TablesTheGuardReads.namesANumberAsSomethingElse.joinToString("|") + ")"
 
-private const val LONGEST_SEPARATOR_BETWEEN_GROUPS = "{0,8}+"
-
 private const val MOST_GROUPS_A_CANDIDATE_MAY_HOLD = "{0,31}+"
 
 private val PHONE_CANDIDATE =
     Regex(
-        """\+?+\p{Nd}(?:$PHONE_SEPARATOR$LONGEST_SEPARATOR_BETWEEN_GROUPS\p{Nd})""" +
+        """\+?+\p{Nd}(?:$PHONE_SEPARATOR_OR_NONE\p{Nd})""" +
             MOST_GROUPS_A_CANDIDATE_MAY_HOLD,
     )
 
@@ -62,8 +60,6 @@ private const val GROUPS_FROM_THE_END_TO_THE_LINES_OWN_GROUP = 2
 
 private val DIGITS_IN_THE_GROUP_BEFORE_THE_LINE = 3..4
 
-private const val FEWEST_SINGLE_DIGIT_GROUPS = 9
-
 private const val ONE_DIGIT = 1
 
 private const val ONE_GROUP = 1
@@ -72,9 +68,11 @@ private const val MOST_DIGITS_BEFORE_A_THOUSANDS_SEPARATOR = 3
 
 private const val DIGITS_IN_A_THOUSANDS_GROUP = 3
 
-private const val ONE_MARK = 1
+private const val MOST_MARKS_ONE_SEPARATOR_MAY_HOLD = 1
 
-private const val ONE_SPELLING_THROUGHOUT = 1
+private const val NO_MARK = 0
+
+private const val ONE_CHUNK = 1
 
 private const val PHONE_CUE_WINDOW = 24
 
@@ -178,11 +176,34 @@ private fun isDialableWithoutACue(
     return endsLikeAnExchangeAndALine || strayDigitsBrokeUpADialableRun
 }
 
+private fun marksIn(separator: String): Int = separator.count { it.category != CharCategory.SPACE_SEPARATOR }
+
+private fun digitsInEachChunkTheSpacesMake(
+    groups: List<Int>,
+    separators: List<String>,
+): List<Int> {
+    val chunks = mutableListOf(groups.first())
+    groups.drop(1).zip(separators).forEach { (group, separator) ->
+        if (marksIn(separator) == NO_MARK) chunks.add(group) else chunks[chunks.lastIndex] += group
+    }
+    return chunks
+}
+
+private fun theSpacesGroupTheRunAsANumberIsGrouped(
+    groups: List<Int>,
+    separators: List<String>,
+): Boolean {
+    val chunks = digitsInEachChunkTheSpacesMake(groups, separators)
+    return chunks.size == ONE_CHUNK ||
+        chunks.all { it == ONE_DIGIT } ||
+        isGroupedWithinAPhoneNumbersLimits(chunks)
+}
+
 private fun isSpreadOneDigitToASeparator(
     groups: List<Int>,
     separators: List<String>,
 ): Boolean =
-    groups.size >= FEWEST_SINGLE_DIGIT_GROUPS &&
+    groups.size >= DIGITS_IN_A_DIALABLE_NUMBER &&
         groups.all { it == ONE_DIGIT } &&
-        separators.distinct().size == ONE_SPELLING_THROUGHOUT &&
-        separators.all { characterCount(it) == ONE_MARK }
+        separators.all { marksIn(it) <= MOST_MARKS_ONE_SEPARATOR_MAY_HOLD } &&
+        theSpacesGroupTheRunAsANumberIsGrouped(groups, separators)

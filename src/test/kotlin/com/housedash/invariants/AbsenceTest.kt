@@ -352,7 +352,7 @@ class AbsenceTest {
 
         const val PRODUCTION_TYPES_THE_SCAN_READS = 69
 
-        const val NAMED_MEMBERS_THE_SCAN_READS = 1122
+        const val NAMED_MEMBERS_THE_SCAN_READS = 1134
 
         const val TABLE_CONTENTS_NOT_SIZE =
             "a size floor asks whether a table is still big and the question is whether it is still the set " +
