@@ -14,9 +14,17 @@ private const val LETTERS_A_NUMBER_IS_NOT_GROUPED_BY = "xXoO"
 
 private const val LAST_CHARACTER_IN_THE_BASIC_PLANE = 0xFFFF
 
+private const val FIRST_CHARACTER_THE_FOLD_CANNOT_REACH = 0x10000
+
+private const val LAST_CHARACTER_UNICODE_DEFINES = 0x10FFFF
+
+private const val DIGIT_SHAPES_THE_FOLD_CANNOT_REACH = 335
+
 private const val DIGIT_SHAPES_OUTSIDE_THE_DECIMAL_CATEGORY = 85
 
 private val DIGIT_VALUES = 0..9
+
+private const val MAYAN_NUMERAL_ZERO = 0x1D2E0
 
 private const val ONE_CHARACTER = 1
 
@@ -319,6 +327,27 @@ class TableRowCoverageTest {
                     "the case cannot tell a folded shape from a separator",
             )
         }
+    }
+
+    @Test
+    fun `the digit fold reads one code unit, so every digit shape above the basic plane is an open gap`() {
+        val outOfReach =
+            (FIRST_CHARACTER_THE_FOLD_CANNOT_REACH..LAST_CHARACTER_UNICODE_DEFINES)
+                .filter { !Character.isDigit(it) && Character.getNumericValue(it) in DIGIT_VALUES }
+        assertEquals(
+            DIGIT_SHAPES_THE_FOLD_CANNOT_REACH,
+            outOfReach.size,
+            "the fold takes a Char, which is a UTF-16 code unit, so a supplementary code point arrives as a " +
+                "surrogate pair and each half has no numeric value. This count is the size of that gap and it " +
+                "is pinned so that widening the fold shows up here as the gap closing",
+        )
+        val spelledOutOfReach =
+            "9175550199".map { digit -> String(Character.toChars(MAYAN_NUMERAL_ZERO + (digit - '0'))) }.joinToString("")
+        assertTrue(
+            contactDetailsIn("call me on $spelledOutOfReach about the leak under the sink here").isEmpty(),
+            "a cued dialable number written in supplementary-plane digit shapes is found, so the gap this test " +
+                "pins open has closed and the pin should become a case",
+        )
     }
 
     @Test
