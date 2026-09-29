@@ -349,11 +349,7 @@ private const val WORDED_DOT =
     """(?:dot|$BRACKET_OPENING_A_WORDED_SEPARATOR""" +
         """dot$BRACKET_CLOSING_A_WORDED_SEPARATOR)"""
 
-private val LABEL_SEPARATOR_A_WORDED_AT_ALLOWS =
-    """(?:$BRACKETED_DOT|$WORDED_DOT_BETWEEN_DOMAIN_LABELS|""" +
-        """\p{Zs}{0,3}+$DOT_A_DOMAIN_LABEL_MAY_BE_SEPARATED_BY\p{Zs}{0,3}+)"""
-
-private val DOMAIN_LABEL_SEPARATOR =
+private val SEPARATOR_BETWEEN_TWO_DOMAIN_LABELS =
     """(?:$BRACKETED_DOT|$WORDED_DOT_BETWEEN_DOMAIN_LABELS|""" +
         """\p{Zs}{0,3}+$DOT_A_DOMAIN_LABEL_MAY_BE_SEPARATED_BY\p{Zs}{0,3}+)"""
 
@@ -367,7 +363,7 @@ private val EMAIL_CANDIDATE =
     Regex(
         """(?i)[A-Za-z0-9._%+\-]{1,64}+\p{Zs}$MOST_SPACES_AROUND_AN_AT_SIGN(?:@|$BRACKETED_AT)""" +
             """\p{Zs}$MOST_SPACES_AROUND_AN_AT_SIGN""" +
-            """($DOMAIN_LABEL(?:$DOMAIN_LABEL_SEPARATOR$DOMAIN_LABEL)*+""" +
+            """($DOMAIN_LABEL(?:$SEPARATOR_BETWEEN_TWO_DOMAIN_LABELS$DOMAIN_LABEL)*+""" +
             """(?:(?<=[A-Za-z])$COMMA_BEFORE_A_TOP_LEVEL_LABEL)?+)""",
     )
 
@@ -391,7 +387,7 @@ private val WORDED_EMAIL =
 private val WORDED_AT_BEFORE_A_MAIL_HOST =
     Regex(
         """(?i)\b[A-Za-z0-9._%+\-]{1,64}+\p{Zs}{1,4}+$WORDED_AT\p{Zs}{1,4}+$CONSUMER_MAIL_HOST""" +
-            """$LABEL_SEPARATOR_A_WORDED_AT_ALLOWS$COMMON_TLD\b""",
+            """$SEPARATOR_BETWEEN_TWO_DOMAIN_LABELS$COMMON_TLD\b""",
     )
 
 private val EMAIL_TOP_LEVEL_LABEL = Regex("""[A-Za-z]{2,24}""")
