@@ -722,6 +722,8 @@ class LayeringTest {
 
         const val MONEY_PACKAGE = "com.housedash.domain.money"
 
+        const val IDENTITY_PACKAGE = "com.housedash.domain.identity"
+
         val AGGREGATE_VARIANTS_BY_NAME =
             setOf(
                 "$CASE_PACKAGE.DraftCase",
@@ -783,23 +785,64 @@ class LayeringTest {
                     ),
                 "$MONEY_PACKAGE.Subscription" to setOf("$MONEY_PACKAGE.Subscription\$Companion#flat"),
                 "$MONEY_PACKAGE.SubscriptionId" to setOf("$MONEY_PACKAGE.SubscriptionId\$Companion#of"),
+                "$IDENTITY_PACKAGE.AccountId" to setOf("$IDENTITY_PACKAGE.AccountId\$Companion#of"),
+                "$IDENTITY_PACKAGE.OtpId" to setOf("$IDENTITY_PACKAGE.OtpId\$Companion#of"),
+                "$IDENTITY_PACKAGE.LoginIdentifier" to
+                    setOf(
+                        "$IDENTITY_PACKAGE.LoginIdentifier\$Companion#of",
+                        "$IDENTITY_PACKAGE.LoginIdentifier\$Companion#rehydrated",
+                    ),
+                "$IDENTITY_PACKAGE.IssuedOtp" to
+                    setOf(
+                        "$IDENTITY_PACKAGE.IssuedOtp\$Companion#issue",
+                        "$IDENTITY_PACKAGE.IssuedOtp\$Companion#rehydrate",
+                    ),
+                "$IDENTITY_PACKAGE.Account" to
+                    setOf(
+                        "$IDENTITY_PACKAGE.Account\$Companion#rehydrate",
+                        "$IDENTITY_PACKAGE.Account\$Companion#opened",
+                        "$IDENTITY_PACKAGE.Account#addProfile",
+                    ),
+                "$IDENTITY_PACKAGE.AccountProfiles" to
+                    setOf(
+                        "$IDENTITY_PACKAGE.AccountProfiles#adding",
+                        "$IDENTITY_PACKAGE.AccountProfiles\$Companion#of",
+                        "$IDENTITY_PACKAGE.AccountProfiles\$Companion#rehydrated",
+                    ),
             )
 
         val RECONSTRUCTION_ENTRY_POINTS_BY_NAME =
-            setOf("$CASE_PACKAGE.Case\$Companion#rehydrate", "$MONEY_PACKAGE.EscrowHold\$Companion#rehydrate")
+            setOf(
+                "$CASE_PACKAGE.Case\$Companion#rehydrate",
+                "$MONEY_PACKAGE.EscrowHold\$Companion#rehydrate",
+                "$IDENTITY_PACKAGE.Account\$Companion#rehydrate",
+                "$IDENTITY_PACKAGE.IssuedOtp\$Companion#rehydrate",
+            )
 
-        val RECONSTRUCTION_ROUTES_THE_REPOSITORY_CALLS = setOf("$CASE_PACKAGE.Case\$Companion#rehydrate")
+        val RECONSTRUCTION_ROUTES_THE_REPOSITORY_CALLS =
+            setOf(
+                "$CASE_PACKAGE.Case\$Companion#rehydrate",
+                "$IDENTITY_PACKAGE.Account\$Companion#rehydrate",
+                "$IDENTITY_PACKAGE.IssuedOtp\$Companion#rehydrate",
+            )
 
         val RECONSTRUCTION_ROUTES_AWAITING_A_REPOSITORY = setOf("$MONEY_PACKAGE.EscrowHold\$Companion#rehydrate")
 
-        val ROWS_THE_REPOSITORY_FORGES = setOf("$CASE_PACKAGE.CaseRow")
+        val ROWS_THE_REPOSITORY_FORGES =
+            setOf("$CASE_PACKAGE.CaseRow", "$IDENTITY_PACKAGE.AccountRow", "$IDENTITY_PACKAGE.OtpRow")
 
         val ROWS_AWAITING_A_REPOSITORY = setOf("$MONEY_PACKAGE.HoldRow", "$MONEY_PACKAGE.LedgerRow")
 
         val TYPES_WITH_A_REOPENED_CONSTRUCTOR = emptySet<String>()
 
         val FORGEABLE_ROW_CONSTRUCTORS =
-            setOf("$CASE_PACKAGE.CaseRow", "$MONEY_PACKAGE.HoldRow", "$MONEY_PACKAGE.LedgerRow")
+            setOf(
+                "$CASE_PACKAGE.CaseRow",
+                "$MONEY_PACKAGE.HoldRow",
+                "$MONEY_PACKAGE.LedgerRow",
+                "$IDENTITY_PACKAGE.AccountRow",
+                "$IDENTITY_PACKAGE.OtpRow",
+            )
 
         const val CONSTRUCTOR = "<init>"
 
@@ -807,10 +850,14 @@ class LayeringTest {
 
         const val WIRE_PACKAGE = "com.housedash.adapters.inbound.http"
 
+        const val PERSISTENCE_PACKAGE = "com.housedash.adapters.outbound.persistence"
+
+        const val OTP_SENDER_PACKAGE = "com.housedash.adapters.outbound.otp"
+
         val LAYERS_THE_MINT_RULES_SCOPE_BY = listOf(APP_PACKAGE, "com.housedash.adapters")
 
         val PACKAGES_THE_MINT_RULES_REFUSE =
-            setOf(APP_PACKAGE, WIRE_PACKAGE, "com.housedash.adapters.outbound.persistence")
+            setOf(APP_PACKAGE, WIRE_PACKAGE, PERSISTENCE_PACKAGE, OTP_SENDER_PACKAGE)
 
         val ROUTES_ENTITLED_BY_PACKAGE: Map<String, Set<String>> =
             mapOf(
@@ -821,6 +868,15 @@ class LayeringTest {
                         "$CASE_PACKAGE.DraftCase\$Companion#of",
                         "$CASE_PACKAGE.DraftCase#describe",
                         "$CASE_PACKAGE.PhotoId\$Companion#of",
+                        "$IDENTITY_PACKAGE.AccountId\$Companion#of",
+                        "$IDENTITY_PACKAGE.OtpId\$Companion#of",
+                        "$IDENTITY_PACKAGE.LoginIdentifier\$Companion#of",
+                        "$IDENTITY_PACKAGE.IssuedOtp\$Companion#issue",
+                    ),
+                PERSISTENCE_PACKAGE to
+                    setOf(
+                        "$IDENTITY_PACKAGE.Account\$Companion#rehydrate",
+                        "$IDENTITY_PACKAGE.IssuedOtp\$Companion#rehydrate",
                     ),
             )
 
@@ -869,6 +925,21 @@ class LayeringTest {
                 "$MONEY_PACKAGE.Subscription\$Companion",
                 "$MONEY_PACKAGE.SubscriptionId",
                 "$MONEY_PACKAGE.SubscriptionId\$Companion",
+                "$IDENTITY_PACKAGE.Account",
+                "$IDENTITY_PACKAGE.Account\$Companion",
+                "$IDENTITY_PACKAGE.AccountId",
+                "$IDENTITY_PACKAGE.AccountId\$Companion",
+                "$IDENTITY_PACKAGE.AccountProfiles",
+                "$IDENTITY_PACKAGE.AccountProfiles\$Companion",
+                "$IDENTITY_PACKAGE.IssuedOtp",
+                "$IDENTITY_PACKAGE.IssuedOtp\$Companion",
+                "$IDENTITY_PACKAGE.LoginIdentifier",
+                "$IDENTITY_PACKAGE.LoginIdentifier\$Companion",
+                "$IDENTITY_PACKAGE.LoginIdentifierFlaw\$Empty",
+                "$IDENTITY_PACKAGE.LoginIdentifierFlaw\$NotPlainText",
+                "$IDENTITY_PACKAGE.LoginIdentifierFlaw\$UnrecognizedShape",
+                "$IDENTITY_PACKAGE.OtpId",
+                "$IDENTITY_PACKAGE.OtpId\$Companion",
             )
     }
 }
