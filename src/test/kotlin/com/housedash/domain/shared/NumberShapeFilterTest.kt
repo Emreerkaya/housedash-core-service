@@ -14,6 +14,31 @@ class NumberShapeFilterTest {
     private fun assertNothingFound(text: String) = assertEquals(emptySet(), contactDetailsIn(text), text)
 
     @Test
+    fun `a ten digit number is found whether its trunk digit joins the area code or the exchange`() {
+        listOf(
+            "Leaking tap under the sink, reach me 91-7555-0199 anytime",
+            "Boiler wont fire, hit me up 21 2555 1234 before noon please",
+            "91-7555-0199",
+            "21 2555 1234",
+        ).forEach(::assertPhoneNumber)
+    }
+
+    @Test
+    fun `these dialable numbers are not found, and the gap is a grouping the rule does not read`() {
+        listOf(
+            "2125-551234",
+            "212-5551234",
+            "2125.551234",
+            "2125551-234",
+            "2125.551.234",
+            "91755 50199",
+            "44-7700-900123",
+            "0044 20 7946 0958",
+            "917 555 01 99",
+        ).forEach(::assertNothingFound)
+    }
+
+    @Test
     fun `a stray single digit inside a ten digit run does not hide the number`() {
         assertPhoneNumber("917 555 019 9")
         assertPhoneNumber("9 175 550 199")
