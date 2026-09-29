@@ -165,25 +165,48 @@ private val UNQUALIFIED_NUMBER_CUE =
 private const val COMMON_TLD =
     """(?:com|net|org|edu|gov|io|co|me|uk|us|ca|de|fr|nl|es|it|ie|au|info|mail|email|app|dev)"""
 
-private const val BRACKETED_AT = """[(\[{]at[)\]}]"""
+private const val BRACKET_OPENING_A_WORDED_SEPARATOR = """[(\[{<]"""
 
-private const val BRACKETED_DOT = """\p{Zs}{0,3}+[(\[{]dot[)\]}]\p{Zs}{0,3}+"""
+private const val BRACKET_CLOSING_A_WORDED_SEPARATOR = """[)\]}>]"""
 
-private const val DOMAIN_LABEL_SEPARATOR = """(?:$BRACKETED_DOT|\p{Zs}{0,3}+\.\p{Zs}{0,3}+)"""
+private const val BRACKETED_AT =
+    """$BRACKET_OPENING_A_WORDED_SEPARATOR""" +
+        """at$BRACKET_CLOSING_A_WORDED_SEPARATOR"""
+
+private const val DOT_A_DOMAIN_LABEL_MAY_BE_SEPARATED_BY =
+    """[$DOT_A_BRAND_MAY_BE_WRITTEN_WITH\u3002]"""
+
+private const val BRACKETED_DOT =
+    """\p{Zs}{0,3}+$BRACKET_OPENING_A_WORDED_SEPARATOR""" +
+        """dot$BRACKET_CLOSING_A_WORDED_SEPARATOR\p{Zs}{0,3}+"""
+
+private const val WORDED_DOT_BETWEEN_DOMAIN_LABELS = """\p{Zs}{1,4}+dot\p{Zs}{1,4}+"""
+
+private const val DOMAIN_LABEL_SEPARATOR =
+    """(?:$BRACKETED_DOT|$WORDED_DOT_BETWEEN_DOMAIN_LABELS|""" +
+        """\p{Zs}{0,3}+$DOT_A_DOMAIN_LABEL_MAY_BE_SEPARATED_BY\p{Zs}{0,3}+)"""
 
 private const val DOMAIN_LABEL = """[A-Za-z0-9\-]{1,63}+"""
 
 private const val MOST_SPACES_AROUND_AN_AT_SIGN = "{0,3}+"
 
+private const val COMMA_BEFORE_A_TOP_LEVEL_LABEL = """,\p{Zs}{0,3}+$COMMON_TLD(?![A-Za-z0-9])"""
+
 private val EMAIL_CANDIDATE =
     Regex(
         """(?i)[A-Za-z0-9._%+\-]{1,64}+\p{Zs}$MOST_SPACES_AROUND_AN_AT_SIGN(?:@|$BRACKETED_AT)""" +
             """\p{Zs}$MOST_SPACES_AROUND_AN_AT_SIGN""" +
-            """($DOMAIN_LABEL(?:$DOMAIN_LABEL_SEPARATOR$DOMAIN_LABEL)*+)""",
+            """($DOMAIN_LABEL(?:$DOMAIN_LABEL_SEPARATOR$DOMAIN_LABEL)*+""" +
+            """(?:(?<=[A-Za-z])$COMMA_BEFORE_A_TOP_LEVEL_LABEL)?+)""",
     )
 
 private val LABEL_SEPARATOR_IN_A_DOMAIN =
-    Regex("""(?i)\p{Zs}{0,3}(?:[(\[{]dot[)\]}]|\.)\p{Zs}{0,3}""")
+    Regex(
+        """(?i)(?:$WORDED_DOT_BETWEEN_DOMAIN_LABELS|\p{Zs}{0,3}+(?:""" +
+            """$BRACKET_OPENING_A_WORDED_SEPARATOR""" +
+            """dot$BRACKET_CLOSING_A_WORDED_SEPARATOR|""" +
+            """$DOT_A_DOMAIN_LABEL_MAY_BE_SEPARATED_BY|,)\p{Zs}{0,3}+)""",
+    )
 
 private val DOMAIN_SPLIT_ONE_LETTER_TO_A_LABEL =
     Regex("""(?i)(?<=[A-Za-z0-9\-]{2})$COMMON_TLD$""")
