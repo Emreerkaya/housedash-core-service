@@ -59,7 +59,7 @@ entitled='.author != null
     and .author.__typename == "User"
     and .authorCanPushToRepository == true
     and (.authorAssociation | IN("OWNER", "MEMBER", "COLLABORATOR"))
-    and (.state | IN("COMMENTED", "APPROVED"))'
+    and (.state | IN("COMMENTED", "APPROVED", "CHANGES_REQUESTED"))'
 
 while read -r login association push state; do
     [ -z "${login:-}" ] && continue
@@ -68,9 +68,15 @@ while read -r login association push state; do
 done < <(printf '%s' "$reviews" | jq -r \
     ".[] | select((${entitled}) | not) | [(.author.login // \"(deleted)\"), .authorAssociation, (.authorCanPushToRepository | tostring), .state] | @tsv")
 
+own_trailer='.body
+    | split("\n")
+    | map(sub("^\\s+"; "") | sub("\\s+$"; ""))
+    | map(select(length > 0))
+    | last // empty'
+
 trailers=$(printf '%s' "$reviews" \
-    | jq -r ".[] | select(${entitled}) | .body" \
-    | grep -oE '<!--[[:space:]]*review-sha:[[:space:]]*[0-9a-f]{7,40}[[:space:]]+dimension:[[:space:]]*[a-z]+[[:space:]]+verdict:[[:space:]]*[a-z]+[[:space:]]*-->' \
+    | jq -r ".[] | select(${entitled}) | ${own_trailer}" \
+    | grep -xE '<!--[[:space:]]*review-sha:[[:space:]]*[0-9a-f]{7,40}[[:space:]]+dimension:[[:space:]]*[a-z]+[[:space:]]+verdict:[[:space:]]*[a-z]+[[:space:]]*-->' \
     || true)
 
 at_head=""
