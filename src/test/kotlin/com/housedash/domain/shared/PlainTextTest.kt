@@ -136,15 +136,30 @@ class PlainTextTest {
     }
 
     @Test
-    fun `a non breaking space is plain text and is stripped by trimming`() {
+    fun `a non breaking space is plain text, and trimming removing it is the premise for letting it through`() {
         assertTrue(isPlainText("tap\u00A0drips"))
-        assertEquals("tap drips", "\u00A0tap drips\u00A0".trim())
+        assertEquals(
+            "tap drips",
+            "\u00A0tap drips\u00A0".trim(),
+            "this leg is a fact about the standard library rather than about this rule, and it cannot fail on " +
+                "any change to this file. It is here because it is the premise the line above rests on: a " +
+                "non-breaking space is allowed inside a description because trimming strips it from the ends, " +
+                "so it cannot be used as invisible padding around one. If Kotlin's trim stops treating it as " +
+                "whitespace, allowing it becomes the wrong decision and this is where that arrives",
+        )
     }
 
     @Test
-    fun `characters are counted in code points and not utf16 units`() {
+    fun `characters are counted in code points, and length counting utf16 units is why that had to be said`() {
         assertEquals(10, characterCount("\uD83D\uDE00".repeat(10)))
-        assertEquals(20, "\uD83D\uDE00".repeat(10).length)
+        assertEquals(
+            20,
+            "\uD83D\uDE00".repeat(10).length,
+            "this leg is a fact about the standard library rather than about this rule, and it cannot fail on " +
+                "any change to this file. It is here because it is what the line above is measured against: " +
+                "length is the obvious thing to reach for and it gives twice the answer for an emoji, so every " +
+                "limit a Nester meets would be halved for them if the count were taken in code units",
+        )
     }
 
     @Test

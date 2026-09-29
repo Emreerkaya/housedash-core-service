@@ -11,11 +11,11 @@ import kotlin.test.fail
 
 private const val CORPUS_RESOURCE = "i7-corpus.tsv"
 
-private const val ROWS_THE_CORPUS_HOLDS = 197
+private const val ROWS_THE_CORPUS_HOLDS = 198
 
-private const val LABELLED_ROWS_THE_CORPUS_HOLDS = 187
+private const val LABELLED_ROWS_THE_CORPUS_HOLDS = 188
 
-private const val DISAGREEMENTS_PINNED_AT_THIS_COMMIT = 52
+private const val DISAGREEMENTS_PINNED_AT_THIS_COMMIT = 53
 
 private const val ROWS_TOO_SHORT_TO_BE_A_DESCRIPTION = 62
 
@@ -127,6 +127,25 @@ class ContactFilterCorpusTest {
             ROWS_THE_CORPUS_HOLDS,
             rows.size,
             "the corpus lost or gained rows; a smaller corpus measures less and says nothing about it",
+        )
+    }
+
+    @Test
+    fun `no two corpus rows hold one sentence, which three consistent counts cannot tell you`() {
+        val rows = corpusRows()
+        val repeated =
+            rows
+                .groupBy { it.input }
+                .filterValues { it.size > 1 }
+                .map { (input, holders) -> "lines ${holders.map { it.line }} all hold \"$input\"" }
+        assertEquals(
+            emptyList(),
+            repeated,
+            "two rows holding one sentence make the row count, the labelled count and the disagreement total " +
+                "all count it twice, and every one of those three is consistent with the repeat because " +
+                "consistency is all they check. One sentence was in here twice from the commit that added it " +
+                "until the commit that added this line, so the headline read 46 of 161 where the distinct " +
+                "figure was 45:\n" + repeated.joinToString("\n"),
         )
         assertEquals(
             LABELLED_ROWS_THE_CORPUS_HOLDS,
