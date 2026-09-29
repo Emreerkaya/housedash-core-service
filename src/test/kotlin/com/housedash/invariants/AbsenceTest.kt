@@ -43,9 +43,7 @@ class AbsenceTest {
                     type.methodCallsFromSelf
                         .filter { it.target.name in ORDERING_CALLS }
                         .map { "${type.name}: calls ${it.target.name} at ${it.sourceCodeLocation}" } +
-                        namedMembersOf(type)
-                            .filter { member -> tokensOf(member.second).any(::isComparatorToken) }
-                            .map { (kind, name) -> "${type.name}: $kind $name" }
+                        comparatorOffencesOf(type)
                 }
         assertTrue(offences.isEmpty()) {
             "$A_TRIPWIRE_NOT_A_PROOF This one lists calls rather than field names, which is a second " +
@@ -95,6 +93,8 @@ class AbsenceTest {
         assertTrue(codebase.none { it.simpleName == "AbsenceTest" })
         assertTrue(namedMembersOf(codebase.single { it.simpleName == "CaseRow" }).isNotEmpty())
         assertTrue(signalsOf(codebase.single { it.simpleName == "CaseRow" }).contains("row"))
+        assertTrue(signalsOf(codebase.single { it.simpleName == "Subscription" }).any(::isMoneyToken))
+        assertTrue(signalsOf(codebase.single { it.simpleName == "PartRefundedHold" }).any(::isMoneyToken))
         val types = codebase.count()
         val members = codebase.sumOf { namedMembersOf(it).size }
         assertEquals(
@@ -225,6 +225,21 @@ class AbsenceTest {
     }
 
     @Test
+    fun `the one comparison that is not a ranking is excluded by its qualified name, and the scan sees it`() {
+        val money = codebase.single { it.simpleName == "Money" }
+        assertTrue(tokensOf("compareTo").any(::isComparatorToken))
+        assertTrue(comparatorOffencesOf(money).isEmpty())
+        val namesOfferedToTheScan = namedMembersOf(money).map { (kind, name) -> "${money.name}: $kind $name" }
+        COMPARATOR_NAMES_THAT_MEAN_SOMETHING_ELSE.forEach { excluded ->
+            assertTrue(namesOfferedToTheScan.contains(excluded)) {
+                "$excluded is excluded from the I3 call tripwire and no longer exists, so the exclusion is now a " +
+                    "silent widening of the scan's blind spot; delete it or correct it"
+            }
+        }
+        assertTrue(comparatorOffencesOf(codebase.single { it.simpleName == "Ledger" }).isEmpty())
+    }
+
+    @Test
     fun `every domain package on disk at any depth is covered by a CODEOWNERS entry that names an owner`() {
         val owned = pathsWithAnOwnerIn(File(CODEOWNERS_FILE).readLines())
         val packages = packagesUnder(File(DOMAIN_SOURCE_ROOT), "/$DOMAIN_SOURCE_ROOT/")
@@ -297,6 +312,12 @@ class AbsenceTest {
             .map { entryPrefix + it.toRelativeString(root).replace(File.separatorChar, '/') + "/" }
             .toList()
 
+    private fun comparatorOffencesOf(type: JavaClass): List<String> =
+        namedMembersOf(type)
+            .filter { member -> tokensOf(member.second).any(::isComparatorToken) }
+            .map { (kind, name) -> "${type.name}: $kind $name" }
+            .filterNot(COMPARATOR_NAMES_THAT_MEAN_SOMETHING_ELSE::contains)
+
     private fun positionOffencesOf(type: JavaClass): List<String> =
         namedMembersOf(type)
             .filter { member -> tokensOf(member.second).any(::isPositionToken) }
@@ -350,9 +371,9 @@ class AbsenceTest {
 
         val WHITESPACE = Regex("""\s+""")
 
-        const val PRODUCTION_TYPES_THE_SCAN_READS = 110
+        const val PRODUCTION_TYPES_THE_SCAN_READS = 161
 
-        const val NAMED_MEMBERS_THE_SCAN_READS = 1553
+        const val NAMED_MEMBERS_THE_SCAN_READS = 2319
 
         const val TABLE_CONTENTS_NOT_SIZE =
             "a size floor asks whether a table is still big and the question is whether it is still the set " +
@@ -394,6 +415,9 @@ class AbsenceTest {
                 "com.housedash.domain.case.CaseError\$DuplicatePhoto: field position",
                 "com.housedash.domain.case.CaseError\$DuplicatePhoto: method getPosition",
             )
+
+        val COMPARATOR_NAMES_THAT_MEAN_SOMETHING_ELSE =
+            setOf("com.housedash.domain.money.Money: method compareTo")
 
         val POSITION_STEMS =
             listOf(
