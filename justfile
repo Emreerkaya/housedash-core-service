@@ -24,3 +24,6 @@ sonar:
 
 commits base="origin/main":
     scripts/check-commits.sh {{base}}
+
+gate-test:
+    scripts/agent-review-test.sh

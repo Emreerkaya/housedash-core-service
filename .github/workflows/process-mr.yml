@@ -61,6 +61,12 @@ jobs:
             build/reports/tests/
           if-no-files-found: ignore
 
+  gate-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: scripts/agent-review-test.sh
+
   jacoco:
     runs-on: ubuntu-latest
     steps:
