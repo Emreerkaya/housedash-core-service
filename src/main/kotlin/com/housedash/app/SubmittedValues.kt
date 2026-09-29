@@ -29,11 +29,11 @@ class SubmittedKey(
 }
 
 class IntakeKey private constructor(
-    private val token: String,
+    val value: String,
 ) {
-    override fun equals(other: Any?): Boolean = other is IntakeKey && other.token == token
+    override fun equals(other: Any?): Boolean = other is IntakeKey && other.value == value
 
-    override fun hashCode(): Int = token.hashCode()
+    override fun hashCode(): Int = value.hashCode()
 
     companion object {
         const val MOST_CHARACTERS = 128
