@@ -484,9 +484,10 @@ class ContactFilterTest {
     }
 
     @Test
-    fun `a two group candidate needs a cue and a trailing short group is never a phone number`() {
+    fun `a two group candidate needs a cue and ten digits, and a trailing short group is never a number`() {
         assertNothingFound("mail the receipt to 10001-1234 instead")
-        assertPhoneNumber("call 10001-1234 now")
+        assertNothingFound("call 10001-1234 now")
+        assertPhoneNumber("call 10001-12345 now")
         assertNothingFound("the gasket stamped 12345-678-90 is split")
     }
 

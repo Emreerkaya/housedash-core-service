@@ -43,6 +43,24 @@ class NumberShapeFilterTest {
     }
 
     @Test
+    fun `a cue enables a grouped run at ten digits and not at nine, which is a product trade`() {
+        listOf(
+            "call me when the 300 600 900 mm boards arrive please",
+            "the ring main sockets are 100 150 200 cm from the floor",
+            "each battery cell reads 100 150 200 on the tester",
+            "the label text reads 100 150 200 on the side of the pump",
+            "call 10001-1234 now",
+            "Water pours through the ceiling below, my cell is 417 555 144",
+        ).forEach(::assertNothingFound)
+        listOf(
+            "call me on 9175550199 about the leak",
+            "my cell is 917 555 0199 please ring",
+            "ring me on 020 7946 0958 tomorrow morning",
+            "three radiators, 600 1200 1800 mm, call ahead please",
+        ).forEach(::assertPhoneNumber)
+    }
+
+    @Test
     fun `a cue further from the run than the window is not a cue, so the window is pinned from above too`() {
         listOf(
             "the flats on this floor are 1010 1020 1030 and the caretaker will ring you back later",
@@ -81,15 +99,17 @@ class NumberShapeFilterTest {
     }
 
     @Test
-    fun `the separator rule reaches two false positive classes the space separated forms already had`() {
+    fun `the separator rule reaches one false positive class the space separated forms already had`() {
         listOf(
-            "the meter reads 100 150 200 across the three dials",
-            "the meter reads 100 = 150 = 200 across the three dials",
             "we paid 12 3450 6789 in total for the whole bathroom job",
             "we paid 12 + 3450 + 6789 in total for the whole bathroom job",
             "the pipe run is 917\u2044555\u20440199 mm of copper",
         ).forEach(::assertPhoneNumber)
-        assertNothingFound("the meter reads 100 150 200 across the three gauges")
+        listOf(
+            "the meter reads 100 150 200 across the three gauges",
+            "the meter reads 100 150 200 across the three dials",
+            "the meter reads 100 = 150 = 200 across the three dials",
+        ).forEach(::assertNothingFound)
     }
 
     @Test
