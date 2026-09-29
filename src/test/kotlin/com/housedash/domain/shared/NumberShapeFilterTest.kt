@@ -24,6 +24,34 @@ class NumberShapeFilterTest {
     }
 
     @Test
+    fun `the phone cue arm is a list, and these ways of asking to be rung are not in it`() {
+        listOf(
+            "reach me on 9175550199",
+            "hit me up on 9175550199",
+            "buzz me on 9175550199",
+            "dm me on 9175550199",
+            "beep me on 9175550199",
+            "give me a bell on 9175550199",
+        ).forEach(::assertNothingFound)
+    }
+
+    @Test
+    fun `a cued run whose last group is shorter than a line number is a quantity list`() {
+        assertNothingFound("call me about the 60 40 30 20 10 split")
+        assertNothingFound("ring me about the 12 15 18 21 24 spacings")
+    }
+
+    @Test
+    fun `these cued dialable numbers are a known cost of that floor and not a specification`() {
+        listOf(
+            "my number is 917 555 01 99 if you need it",
+            "call me on 12 34 56 78 90",
+            "text me on 9175 5501 99 today",
+            "phone me on 917-555-01-99 tomorrow",
+        ).forEach(::assertNothingFound)
+    }
+
+    @Test
     fun `these dialable numbers are not found, and the gap is a grouping the rule does not read`() {
         listOf(
             "2125-551234",
