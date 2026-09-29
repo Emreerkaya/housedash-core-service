@@ -201,7 +201,7 @@ class TableRowCoverageTest {
     fun `every punctuation table this guard reads holds exactly the entries this test names`() {
         assertTableHolds(
             PUNCTUATION_THE_THOUSANDS_ARM_OWNS,
-            TablesTheGuardReads.PUNCTUATION_THE_THOUSANDS_ARM_OWNS.toList(),
+            PUNCTUATION_THE_THOUSANDS_ARM_OWNS.toList(),
             "the table of marks the thousands arm reads",
         )
         assertTableHolds(
@@ -218,10 +218,10 @@ class TableRowCoverageTest {
 
     @Test
     fun `every word list this guard reads holds exactly the entries this test names`() {
-        assertTableHolds(WAYS_OF_ASKING_TO_BE_RUNG, TablesTheGuardReads.waysOfAskingToBeRung, "the phone cue list")
+        assertTableHolds(WAYS_OF_ASKING_TO_BE_RUNG, waysOfAskingToBeRung, "the phone cue list")
         assertTableHolds(
             NAMES_A_NUMBER_MAY_CARRY_INSTEAD,
-            TablesTheGuardReads.namesANumberAsSomethingElse,
+            namesANumberAsSomethingElse,
             "the list of names a number may carry instead",
         )
         assertTableHolds(
@@ -278,7 +278,7 @@ class TableRowCoverageTest {
 
     @Test
     fun `a run grouped entirely by the thousands marks is money by its shape, and a letter is not a separator`() {
-        TablesTheGuardReads.PUNCTUATION_THE_THOUSANDS_ARM_OWNS.forEach { owned ->
+        PUNCTUATION_THE_THOUSANDS_ARM_OWNS.forEach { owned ->
             assertFindsNothing(
                 "rated 10${owned}000$owned 12${owned}000 or 14${owned}000 BTU",
                 owned.toString(),
@@ -418,7 +418,7 @@ class TableRowCoverageTest {
 
     @Test
     fun `every way of asking to be rung carries a bare keypad run past the guard`() {
-        TablesTheGuardReads.waysOfAskingToBeRung.forEach { cue ->
+        waysOfAskingToBeRung.forEach { cue ->
             val spelling = if (cue == TablesTheGuardReads.whatsapp) "whatsapp" else cue
             assertTrue(
                 WORD_A_BRAND_FRAGMENT_OPENS_WITH.matches(spelling),
@@ -436,7 +436,7 @@ class TableRowCoverageTest {
 
     @Test
     fun `every name a number may carry instead keeps an ordinary number out of the cue arm`() {
-        TablesTheGuardReads.namesANumberAsSomethingElse.forEach { name ->
+        namesANumberAsSomethingElse.forEach { name ->
             assertFindsNothing(
                 "the $name number is 9175550199",
                 name,

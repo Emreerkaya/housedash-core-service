@@ -480,20 +480,47 @@ class LayeringTest {
     }
 
     @Test
-    fun `the folding precondition on the number shape guard is confined by a call rule`() {
-        noClasses()
-            .that()
-            .resideOutsideOfPackage(sharedKernelPackage)
-            .should()
-            .callMethodWhere(callTo("holdsPhoneNumberInAlreadyFoldedText", sharedKernelPackage))
-            .`as`(
-                "holdsPhoneNumberInAlreadyFoldedText is internal so that ContactDetail.kt can call it across a " +
-                    "file boundary, and internal is module-wide in a single-module build, so visibility does " +
-                    "not confine who may call it. It carries a precondition the type system cannot express: " +
-                    "its argument must already have been through the confusable and spacing fold, and on raw " +
-                    "text it answers a different question. The name says so and this rule holds anyone outside " +
-                    "$sharedKernelPackage to it",
-            ).check(codebase)
+    fun `the folding precondition is carried by a type nothing outside its own file can construct`() {
+        val folded = codebase.single { it.simpleName == FOLDED_TEXT_TYPE }
+        assertTrue(folded.constructors.isNotEmpty()) {
+            "$FOLDED_TEXT_TYPE is the type the number shape guard takes instead of a String, and this test " +
+                "found no constructor on it at all, so the rest of this test compared nothing"
+        }
+        val reachable =
+            folded.constructors
+                .filterNot { it.modifiers.contains(JavaModifier.PRIVATE) }
+                .filterNot { constructor ->
+                    constructor.rawParameterTypes.any { it.simpleName == KOTLINS_OWN_BRIDGE_PARAMETER }
+                }
+        assertTrue(reachable.isEmpty()) {
+            "the guard used to take a String and carry its precondition in its name, " +
+                "holdsPhoneNumberInAlreadyFoldedText, with an ArchUnit rule naming that name: both halves " +
+                "failed in one rename, so it was not defence in depth. The precondition is a type now. " +
+                "$FOLDED_TEXT_TYPE can only be made by the fold that produces one, because every constructor " +
+                "is private to the file the fold lives in, so raw text is not a thing the guard can be handed " +
+                "and the compiler says so rather than this test. What this test guards is that the " +
+                "constructors stay private; if one opens, the precondition is back to being a promise. One " +
+                "constructor is skipped and it is worth knowing why: Kotlin emits a synthetic bridge taking a " +
+                "$KOTLINS_OWN_BRIDGE_PARAMETER beside the real one, it is not private in the bytecode, and no " +
+                "Kotlin source can name it. So the guarantee here is a Kotlin-source guarantee rather than a " +
+                "bytecode one, which is the same gap as a const val compiling to an ldc. Reachable " +
+                "constructors: " + reachable.map { it.fullName }
+        }
+    }
+
+    @Test
+    fun `the number shape guard takes the folded text type, so the type above is the way in`() {
+        assertTrue(
+            codebase
+                .single { it.simpleName == NUMBER_SHAPE_FILE }
+                .methods
+                .any { method -> method.rawParameterTypes.any { it.simpleName == FOLDED_TEXT_TYPE } },
+            "no method of $NUMBER_SHAPE_FILE takes a $FOLDED_TEXT_TYPE, so the type above is no longer the way " +
+                "in and this test is guarding something nothing uses. Note for whoever writes the next rule " +
+                "here: a const val cannot be confined this way at all, because a reader of " +
+                "SEPARATOR_BETWEEN_TWO_DIGIT_GROUPS compiles to an ldc of its value with no reference to the " +
+                "object it was declared in, so no dependency check can see the read",
+        )
     }
 
     @Test
@@ -535,6 +562,12 @@ class LayeringTest {
     }
 
     private companion object {
+        const val FOLDED_TEXT_TYPE = "FoldedForMatchingOnly"
+
+        const val NUMBER_SHAPE_FILE = "NumberShapeKt"
+
+        const val KOTLINS_OWN_BRIDGE_PARAMETER = "DefaultConstructorMarker"
+
         const val COMPANION_OBJECT = "Companion"
 
         val READING_MEMBERS = setOf("getId", "getDescription", "getPhotos")

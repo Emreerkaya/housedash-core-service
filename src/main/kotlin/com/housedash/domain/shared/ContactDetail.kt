@@ -4,6 +4,22 @@ import java.text.Normalizer
 
 const val MOST_CHARACTERS_THE_GUARD_READS = 2000
 
+internal class FoldedForMatchingOnly private constructor(
+    val text: String,
+) {
+    internal companion object {
+        fun foldsOf(text: String): List<FoldedForMatchingOnly> {
+            val folded = foldCharacters(text)
+            val spacingClosed = closeSpacedOutRuns(folded)
+            return if (spacingClosed == folded) {
+                listOf(FoldedForMatchingOnly(folded))
+            } else {
+                listOf(FoldedForMatchingOnly(folded), FoldedForMatchingOnly(spacingClosed))
+            }
+        }
+    }
+}
+
 sealed interface ContactDetail {
     data object PhoneNumber : ContactDetail
 
@@ -117,8 +133,6 @@ internal object TablesTheGuardReads {
         """what$betweenTheWordsOfABrand{0,2}+$apostropheOrNone""" +
             """s$betweenTheWordsOfABrand{0,2}+app"""
 
-    const val PUNCTUATION_THE_THOUSANDS_ARM_OWNS = ",;:"
-
     const val MARK_BETWEEN_TWO_DIGIT_GROUPS = """[^\p{L}\p{Nd}]"""
 
     const val MARKS_ONE_SEPARATOR_IS_WRITTEN_WITH = "{1,8}+"
@@ -127,69 +141,6 @@ internal object TablesTheGuardReads {
         "$MARK_BETWEEN_TWO_DIGIT_GROUPS$MARKS_ONE_SEPARATOR_IS_WRITTEN_WITH"
 
     const val SEPARATOR_OR_NONE_BETWEEN_TWO_DIGIT_GROUPS = "(?:$SEPARATOR_BETWEEN_TWO_DIGIT_GROUPS)?+"
-
-    val waysOfAskingToBeRung =
-        listOf(
-            "call",
-            "calls",
-            "called",
-            "calling",
-            "text",
-            "texts",
-            "texted",
-            "ring",
-            "rings",
-            "dial",
-            "dials",
-            "phone",
-            "phones",
-            "telephone",
-            "tel",
-            "mobile",
-            "cell",
-            "cellphone",
-            whatsapp,
-            "sms",
-        )
-
-    val namesANumberAsSomethingElse =
-        listOf(
-            "serial",
-            "serials",
-            "model",
-            "imei",
-            "part",
-            "parts",
-            "sku",
-            "meter",
-            "reading",
-            "invoice",
-            "order",
-            "ref",
-            "reference",
-            "barcode",
-            "licence",
-            "license",
-            "policy",
-            "warranty",
-            "asset",
-            "batch",
-            "code",
-            "account",
-            "acct",
-            "lot",
-            "unit",
-            "catalogue",
-            "catalog",
-            "job",
-            "door",
-            "flat",
-            "buzzer",
-            "apartment",
-            "room",
-            "version",
-            "build",
-        )
 
     val topLevelLabels =
         listOf(
@@ -451,12 +402,12 @@ private const val LETTER_SHIFT = 100
 private const val FIRST_LETTER_VALUE = 10
 
 fun contactDetailsIn(text: String): Set<ContactDetail> {
-    val folds = foldsForMatchingOnly(text)
+    val folds = FoldedForMatchingOnly.foldsOf(text)
     return buildSet {
-        if (folds.any { holdsPhoneNumberInAlreadyFoldedText(it) }) add(ContactDetail.PhoneNumber)
-        if (folds.any { holdsEmailAddress(it) }) add(ContactDetail.EmailAddress)
-        if (folds.any { holdsPaymentDetail(it) }) add(ContactDetail.PaymentLink)
-        if (folds.any { MESSAGING_HANDLE.containsMatchIn(it) }) add(ContactDetail.MessagingHandle)
+        if (folds.any { holdsPhoneNumberIn(it) }) add(ContactDetail.PhoneNumber)
+        if (folds.any { holdsEmailAddress(it.text) }) add(ContactDetail.EmailAddress)
+        if (folds.any { holdsPaymentDetail(it.text) }) add(ContactDetail.PaymentLink)
+        if (folds.any { MESSAGING_HANDLE.containsMatchIn(it.text) }) add(ContactDetail.MessagingHandle)
     }
 }
 
@@ -469,25 +420,24 @@ fun withoutContactDetails(text: String): Outcome<String, TextFlaw> {
     return if (kinds.isEmpty()) Outcome.Ok(text) else Outcome.Err(TextFlaw.ContactDetails(kinds))
 }
 
-private fun foldsForMatchingOnly(text: String): List<String> {
+private fun foldCharacters(text: String): String {
     val compatibility = Normalizer.normalize(text, Normalizer.Form.NFKD)
-    val folded =
-        buildString(compatibility.length) {
-            for (character in compatibility) {
-                if (character.category in CATEGORIES_STRIPPED_BEFORE_MATCHING) continue
-                if (character in LINE_BREAKS_A_DESCRIPTION_BOX_CREATES) {
-                    append(' ')
-                } else {
-                    append(CONFUSABLES_FOLDED_TO_LATIN[character] ?: digitThisShapeStandsFor(character) ?: character)
-                }
+    return buildString(compatibility.length) {
+        for (character in compatibility) {
+            if (character.category in CATEGORIES_STRIPPED_BEFORE_MATCHING) continue
+            if (character in LINE_BREAKS_A_DESCRIPTION_BOX_CREATES) {
+                append(' ')
+            } else {
+                append(CONFUSABLES_FOLDED_TO_LATIN[character] ?: digitThisShapeStandsFor(character) ?: character)
             }
         }
-    val spacingClosed =
-        SPACED_OUT_RUN.replace(folded) { run ->
-            run.value.filter { it.category != CharCategory.SPACE_SEPARATOR }
-        }
-    return if (spacingClosed == folded) listOf(folded) else listOf(folded, spacingClosed)
+    }
 }
+
+private fun closeSpacedOutRuns(folded: String): String =
+    SPACED_OUT_RUN.replace(folded) { run ->
+        run.value.filter { it.category != CharCategory.SPACE_SEPARATOR }
+    }
 
 private fun digitThisShapeStandsFor(character: Char): Char? {
     if (character.isDigit()) return null

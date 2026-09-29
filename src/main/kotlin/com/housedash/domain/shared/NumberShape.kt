@@ -1,12 +1,77 @@
 package com.housedash.domain.shared
 
+internal const val PUNCTUATION_THE_THOUSANDS_ARM_OWNS = ",;:"
+
+internal val waysOfAskingToBeRung =
+    listOf(
+        "call",
+        "calls",
+        "called",
+        "calling",
+        "text",
+        "texts",
+        "texted",
+        "ring",
+        "rings",
+        "dial",
+        "dials",
+        "phone",
+        "phones",
+        "telephone",
+        "tel",
+        "mobile",
+        "cell",
+        "cellphone",
+        TablesTheGuardReads.whatsapp,
+        "sms",
+    )
+
+internal val namesANumberAsSomethingElse =
+    listOf(
+        "serial",
+        "serials",
+        "model",
+        "imei",
+        "part",
+        "parts",
+        "sku",
+        "meter",
+        "reading",
+        "invoice",
+        "order",
+        "ref",
+        "reference",
+        "barcode",
+        "licence",
+        "license",
+        "policy",
+        "warranty",
+        "asset",
+        "batch",
+        "code",
+        "account",
+        "acct",
+        "lot",
+        "unit",
+        "catalogue",
+        "catalog",
+        "job",
+        "door",
+        "flat",
+        "buzzer",
+        "apartment",
+        "room",
+        "version",
+        "build",
+    )
+
 private const val PHONE_SEPARATOR_OR_NONE = TablesTheGuardReads.SEPARATOR_OR_NONE_BETWEEN_TWO_DIGIT_GROUPS
 
 private val PHONE_CUE =
-    Regex("""(?i)\b(?:${TablesTheGuardReads.waysOfAskingToBeRung.joinToString("|")})\b""")
+    Regex("""(?i)\b(?:${waysOfAskingToBeRung.joinToString("|")})\b""")
 
 private val NAMES_A_NUMBER_AS_SOMETHING_ELSE =
-    "(?:" + TablesTheGuardReads.namesANumberAsSomethingElse.joinToString("|") + ")"
+    "(?:" + namesANumberAsSomethingElse.joinToString("|") + ")"
 
 private const val MOST_GROUPS_A_CANDIDATE_MAY_HOLD = "{0,31}+"
 
@@ -18,7 +83,7 @@ private val PHONE_CANDIDATE =
 
 private const val WHOLE_GROUP_OF_DIGITS = """(?<!\p{Nd})\p{Nd}{1,6}+(?!\p{Nd})"""
 
-private val THOUSANDS_PUNCTUATION = """[${TablesTheGuardReads.PUNCTUATION_THE_THOUSANDS_ARM_OWNS}]\p{Zs}{0,2}+"""
+private val THOUSANDS_PUNCTUATION = """[${PUNCTUATION_THE_THOUSANDS_ARM_OWNS}]\p{Zs}{0,2}+"""
 
 private const val MOST_PUNCTUATED_SEPARATORS = "{1,5}+"
 
@@ -33,7 +98,7 @@ private val DIGIT_GROUP = Regex("""\p{Nd}++""")
 private val THOUSANDS_GROUPED_SEPARATOR = Regex(THOUSANDS_PUNCTUATION)
 
 private val ENDS_ONE_NUMBER_IN_A_LIST =
-    Regex("""[${TablesTheGuardReads.PUNCTUATION_THE_THOUSANDS_ARM_OWNS}]\p{Zs}{1,2}+""")
+    Regex("""[${PUNCTUATION_THE_THOUSANDS_ARM_OWNS}]\p{Zs}{1,2}+""")
 
 private val NAMES_THE_NUMBER_AS_SOMETHING_ELSE =
     Regex("""(?i)\b$NAMES_A_NUMBER_AS_SOMETHING_ELSE\b""")
@@ -81,9 +146,11 @@ private val DIGITS_A_DIALABLE_NUMBER_REACHES = PHONE_DIGIT_COUNT.first
 
 private const val PHONE_CUE_WINDOW = 24
 
-internal fun holdsPhoneNumberInAlreadyFoldedText(folded: String): Boolean =
-    PHONE_CANDIDATE.findAll(folded).any { isAPhoneNumber(folded, it) } ||
-        PUNCTUATION_GROUPED_CANDIDATE.findAll(folded).any { isAPhoneNumber(folded, it) }
+internal fun holdsPhoneNumberIn(folded: FoldedForMatchingOnly): Boolean {
+    val text = folded.text
+    return PHONE_CANDIDATE.findAll(text).any { isAPhoneNumber(text, it) } ||
+        PUNCTUATION_GROUPED_CANDIDATE.findAll(text).any { isAPhoneNumber(text, it) }
+}
 
 private data class WordsAroundTheRun(
     val cued: Boolean,
