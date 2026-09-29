@@ -2,14 +2,14 @@ package com.housedash
 
 import com.housedash.adapters.inbound.http.CASES_PATH
 import com.housedash.adapters.inbound.http.INTAKE_KEY_HEADER
-import com.housedash.adapters.outbound.persistence.InMemoryCaseRepository
+import com.housedash.adapters.outbound.persistence.PostgresCaseRepository
 import com.housedash.app.CaseIdentifiers
 import com.housedash.app.CaseRepository
 import com.housedash.app.CreateCase
-import com.housedash.app.TAP_DESCRIPTION
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.boot.testcontainers.service.connection.ServiceConnection
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
@@ -17,10 +17,19 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPat
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import org.springframework.web.context.WebApplicationContext
+import org.testcontainers.junit.jupiter.Container
+import org.testcontainers.junit.jupiter.Testcontainers
+import org.testcontainers.postgresql.PostgreSQLContainer
+import org.testcontainers.utility.DockerImageName
 import java.time.Clock
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
+private const val POSTGRES_IMAGE = "postgres:16"
+
+private const val TAP_DESCRIPTION = "kitchen tap drips from the base and needs a look"
+
+@Testcontainers
 @SpringBootTest
 class HouseDashServiceTest
     @Autowired
@@ -34,15 +43,15 @@ class HouseDashServiceTest
         private val mockMvc: MockMvc get() = MockMvcBuilders.webAppContextSetup(context).build()
 
         @Test
-        fun `the service wires the port to the in memory repository, the clock and the identifier source`() {
-            assertIs<InMemoryCaseRepository>(cases)
+        fun `the service wires the port to the postgres repository, the clock and the identifier source`() {
+            assertIs<PostgresCaseRepository>(cases)
             assertEquals(Clock.systemUTC(), clock)
             assertIs<CreateCase>(createCase)
             assertIs<CaseIdentifiers>(identifiers)
         }
 
         @Test
-        fun `posting a described case to the running service creates it, so the endpoint answers something`() {
+        fun `posting a described case to the running service creates it against the real database`() {
             mockMvc
                 .perform(
                     post(CASES_PATH)
@@ -53,6 +62,12 @@ class HouseDashServiceTest
                         ),
                 ).andExpect(status().isCreated)
                 .andExpect(jsonPath("$.state").value("DESCRIBED"))
-            assertEquals(1, assertIs<InMemoryCaseRepository>(cases).storedCases())
+        }
+
+        private companion object {
+            @Container
+            @ServiceConnection
+            @JvmStatic
+            val postgres: PostgreSQLContainer = PostgreSQLContainer(DockerImageName.parse(POSTGRES_IMAGE))
         }
     }
