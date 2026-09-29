@@ -1,6 +1,7 @@
 package com.housedash.domain.case
 
 import com.housedash.domain.shared.ContactDetail
+import com.housedash.domain.shared.MOST_CHARACTERS_THE_GUARD_READS
 import com.housedash.domain.shared.Outcome
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -149,7 +150,7 @@ class DescriptionTest {
     fun `accepts ordinary repair prose that merely contains numbers`() {
         listOf(
             "the boiler pressure drops overnight, it is a 2015 model",
-            "radiator in bedroom 2 is cold, flat 4B at 350 East 62nd Street",
+            "radiator in bedroom 2 is cold, flat 4B at 350 Example Street",
             "the fuse blew on 2026-09-24 and blew again the next day",
             "the last plumber charged \$250 and it still leaks badly",
             "the pipe under the sink is 3/4 inch and weeping at the joint",
@@ -178,6 +179,7 @@ class DescriptionTest {
     fun `the published bounds are the ones enforced`() {
         assertEquals(20, Description.MIN_LENGTH)
         assertEquals(2000, Description.MAX_LENGTH)
+        assertEquals(MOST_CHARACTERS_THE_GUARD_READS, Description.MAX_LENGTH)
     }
 
     @Test
