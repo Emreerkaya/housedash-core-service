@@ -3,6 +3,7 @@ package com.housedash.architecture
 import com.tngtech.archunit.base.DescribedPredicate
 import com.tngtech.archunit.core.domain.JavaCall
 import com.tngtech.archunit.core.domain.JavaClass
+import com.tngtech.archunit.core.domain.JavaGenericArrayType
 import com.tngtech.archunit.core.domain.JavaMethod
 import com.tngtech.archunit.core.domain.JavaModifier
 import com.tngtech.archunit.core.domain.JavaParameterizedType
@@ -118,8 +119,9 @@ class LayeringTest {
         domain
             .flatMap { it.methods }
             .filter { reachableFromOutside(it.modifiers) }
-            .filter { method -> method.rawParameterTypes.any { storedRow.test(it) } }
-            .map { "${it.owner.name}#${it.name}" }
+            .filter { method ->
+                method.parameterTypes.any { parameter -> typesNamedIn(parameter).any(storedRow::test) }
+            }.map { "${it.owner.name}#${it.name}" }
             .toSet()
 
     private val forgeableRowConstructors: Set<String> =
@@ -129,13 +131,16 @@ class LayeringTest {
             .map { it.name }
             .toSet()
 
-    private fun typesNamedIn(returned: JavaType): List<JavaClass> =
-        listOf(returned.toErasure()) +
-            if (returned is JavaParameterizedType) {
-                returned.actualTypeArguments.flatMap { typesNamedIn(it) }
-            } else {
-                emptyList()
+    private fun typesNamedIn(named: JavaType): List<JavaClass> {
+        val erasure = named.toErasure()
+        val within =
+            when {
+                named is JavaParameterizedType -> named.actualTypeArguments.flatMap { typesNamedIn(it) }
+                named is JavaGenericArrayType -> typesNamedIn(named.componentType)
+                else -> erasure.tryGetComponentType().map { typesNamedIn(it) }.orElse(emptyList())
             }
+        return listOf(erasure) + within
+    }
 
     private fun callTo(
         methodName: String,
@@ -342,7 +347,7 @@ class LayeringTest {
     }
 
     @Test
-    fun `a closed domain type is minted only inside its own package`() {
+    fun `mint tripwire, not a proof, a closed domain type is minted only inside its own package`() {
         classes()
             .should(
                 MintBoundary(
@@ -372,7 +377,7 @@ class LayeringTest {
     }
 
     @Test
-    fun `an aggregate is reconstructed from a stored row only by the repository`() {
+    fun `reconstruction tripwire, not a proof, a stored row is read back only by the repository`() {
         classes()
             .should(
                 MintBoundary(
@@ -439,6 +444,57 @@ class LayeringTest {
     }
 
     @Test
+    fun `the construction boundary names the routes it watches and not merely some route`() {
+        assertTrue(mintTargetsByProducedType == MINT_ROUTES_BY_NAME) {
+            "the mint routes found in the domain are $mintTargetsByProducedType and this test names " +
+                "$MINT_ROUTES_BY_NAME. A route that quietly left the watched set leaves a non-empty map " +
+                "behind, which every assertion over its own contents reports as success; a route erased to a " +
+                "raw List or hidden in an array component leaves it silently"
+        }
+        assertTrue(reconstructionEntryPoints == RECONSTRUCTION_ENTRY_POINTS_BY_NAME) {
+            "the reconstruction entry points found in the domain are $reconstructionEntryPoints and this test " +
+                "names $RECONSTRUCTION_ENTRY_POINTS_BY_NAME; a repository findAll taking List<CaseRow> is " +
+                "exactly the signature that used to leave this set without any assertion noticing"
+        }
+        assertTrue(typesWithAReopenedConstructor == TYPES_WITH_A_REOPENED_CONSTRUCTOR) {
+            "the closed types with a constructor reachable by name are $typesWithAReopenedConstructor and " +
+                "this test names $TYPES_WITH_A_REOPENED_CONSTRUCTOR"
+        }
+        assertTrue(forgeableRowConstructors == FORGEABLE_ROW_CONSTRUCTORS) {
+            "the stored-row types with a reachable constructor are $forgeableRowConstructors and this test " +
+                "names $FORGEABLE_ROW_CONSTRUCTORS"
+        }
+    }
+
+    @Test
+    fun `the inbound parse boundaries the rule's prose names are each a watched route`() {
+        INBOUND_PARSE_BOUNDARIES.forEach { (produced, route) ->
+            assertTrue(mintTargetsByProducedType[produced].orEmpty().contains(route)) {
+                "the construction rule's prose says $route is a watched route on purpose because it is where " +
+                    "the identifier shapes and the I7 filter run, and the routes found for $produced are " +
+                    "${mintTargetsByProducedType[produced].orEmpty()}. The per-variant coverage loop cannot " +
+                    "reach Description, which is closed but is not a state-carrying variant of a sealed " +
+                    "aggregate, so this is the only assertion that holds the prose to the code"
+            }
+        }
+    }
+
+    @Test
+    fun `both mint boundaries are armed tripwires today because no app or adapters class exists yet`() {
+        val outsideTheDomain =
+            codebase
+                .filter { type -> LAYERS_THE_MINT_RULES_SCOPE_BY.any { type.packageName.startsWith(it) } }
+                .map { it.name }
+        assertTrue(outsideTheDomain.isEmpty()) {
+            "both mint boundaries scope their permission by package, and until Task 3 and Task 4 there is no " +
+                "app or adapters package for them to refuse, so neither rule has a subject outside the domain " +
+                "and both are tripwires rather than enforcement. These classes now exist: $outsideTheDomain. " +
+                "Rename this test and both rules when that is no longer true, because D176's lesson is that a " +
+                "test named as a proof gets trusted as one"
+        }
+    }
+
+    @Test
     fun `both construction boundaries cover a real target rather than nothing`() {
         val variants = domain.filter { aggregateVariant.test(it) }
         assertTrue(variants.isNotEmpty()) {
@@ -469,6 +525,44 @@ class LayeringTest {
         const val CASE_PACKAGE = "com.housedash.domain.case"
 
         val AGGREGATE_VARIANTS_BY_NAME = setOf("$CASE_PACKAGE.DraftCase", "$CASE_PACKAGE.DescribedCase")
+
+        val MINT_ROUTES_BY_NAME: Map<String, Set<String>> =
+            mapOf(
+                "$CASE_PACKAGE.CaseId" to setOf("$CASE_PACKAGE.CaseId\$Companion#of"),
+                "$CASE_PACKAGE.CasePhotos" to
+                    setOf(
+                        "$CASE_PACKAGE.CasePhotos\$Companion#of",
+                        "$CASE_PACKAGE.CasePhotos\$Companion#rehydrated",
+                    ),
+                "$CASE_PACKAGE.DescribedCase" to
+                    setOf(
+                        "$CASE_PACKAGE.DescribedCase\$Companion#describing",
+                        "$CASE_PACKAGE.DescribedCase\$Companion#rehydrated",
+                        "$CASE_PACKAGE.DraftCase#describe",
+                    ),
+                "$CASE_PACKAGE.Description" to
+                    setOf(
+                        "$CASE_PACKAGE.Description\$Companion#of",
+                        "$CASE_PACKAGE.Description\$Companion#rehydrated",
+                    ),
+                "$CASE_PACKAGE.DraftCase" to setOf("$CASE_PACKAGE.DraftCase\$Companion#of"),
+                "$CASE_PACKAGE.PhotoId" to setOf("$CASE_PACKAGE.PhotoId\$Companion#of"),
+            )
+
+        val RECONSTRUCTION_ENTRY_POINTS_BY_NAME = setOf("$CASE_PACKAGE.Case\$Companion#rehydrate")
+
+        val TYPES_WITH_A_REOPENED_CONSTRUCTOR = emptySet<String>()
+
+        val FORGEABLE_ROW_CONSTRUCTORS = setOf("$CASE_PACKAGE.CaseRow")
+
+        val LAYERS_THE_MINT_RULES_SCOPE_BY = listOf("com.housedash.app", "com.housedash.adapters")
+
+        val INBOUND_PARSE_BOUNDARIES =
+            listOf(
+                "$CASE_PACKAGE.CaseId" to "$CASE_PACKAGE.CaseId\$Companion#of",
+                "$CASE_PACKAGE.PhotoId" to "$CASE_PACKAGE.PhotoId\$Companion#of",
+                "$CASE_PACKAGE.Description" to "$CASE_PACKAGE.Description\$Companion#of",
+            )
 
         val CLOSED_CONSTRUCTION_BY_NAME =
             setOf(
