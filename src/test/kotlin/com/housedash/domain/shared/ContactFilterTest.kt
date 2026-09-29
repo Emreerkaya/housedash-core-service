@@ -572,10 +572,12 @@ class ContactFilterTest {
     }
 
     @Test
-    fun `a host with no dotted top level label is not an email address`() {
+    fun `a host with no dotted top level label is not found, and calling it not an email was wrong`() {
         assertNothingFound("bob@localhost is where the logs go")
         assertNothingFound("bob@example..com is a typo")
         assertNothingFound("bob@example.c0m is a typo")
+        assertNothingFound("Kitchen tap drips from the base, email me at bob@gmail and I will send photos")
+        assertNothingFound("Kitchen tap drips, email me at bob at gmail com and I will send photos")
     }
 
     @Test
