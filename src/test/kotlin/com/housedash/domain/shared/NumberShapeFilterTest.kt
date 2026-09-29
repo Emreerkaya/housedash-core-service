@@ -3,12 +3,6 @@ package com.housedash.domain.shared
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 
-private val DIGIT_GROUPS = Regex("""\p{Nd}++""")
-
-private fun digitGroupsOf(text: String): List<Int> = DIGIT_GROUPS.findAll(text).map { it.value.length }.toList()
-
-private val DIGIT_GROUPS_OF_A_UK_LANDLINE = digitGroupsOf("020 7946 0958")
-
 private const val FIRST_PRINTABLE_ASCII = 0x20
 
 private const val LAST_PRINTABLE_ASCII = 0x7E
@@ -186,17 +180,7 @@ class NumberShapeFilterTest {
     }
 
     @Test
-    fun `extending the uncued rule to eleven digits was measured and refused`() {
-        assertEquals(
-            DIGIT_GROUPS_OF_A_UK_LANDLINE,
-            digitGroupsOf("Radiator sizes are 600 1200 1800 mm across the flat here"),
-            "a UK landline written 020 7946 0958 and a radiator size list written 600 1200 1800 have the same " +
-                "group widths and the same total, so a rule that reads one reads the other. Extending the " +
-                "uncued arm from exactly ten digits to ten or eleven was run: it gains the UK landline row and " +
-                "loses this sentence, which the previous round closed, and reddens the quantity-list pin below. " +
-                "One row each way, and a false positive costs more than a false negative, so the eleven digit " +
-                "class stays open and is declared above rather than closed",
-        )
+    fun `the uncued rule was measured at eleven digits and refused, and both sides of that are pinned`() {
         assertNothingFound("Radiator sizes are 600 1200 1800 mm across the flat here")
         assertNothingFound("020 7946 0958")
     }
@@ -210,34 +194,31 @@ class NumberShapeFilterTest {
     }
 
     @Test
-    fun `that arm rejects a number written with a space for its thousands separator, and that is a cost`() {
+    fun `that arm rejects four sentences written with a space for a thousands separator, and that is the cost`() {
         listOf(
-            "boiler serial 1 234 567 890 is on the plate behind the panel",
-            "the meter reading was 1 234 567 890 when I looked this morning",
             "the quote came to 1 250 000 000 lira for the whole block here",
             "We counted 8 200 300 400 mm lengths of skirting in the hall here",
             "I need 2 600 900 1200 mm boards cut for the shelves in the alcove",
             "The riser needs 6 100 150 200 mm couplers to finish the run here",
-            "Radiator widths in the hall are 100 200 300 3 mm across the flat",
         ).forEach(::assertPhoneNumber)
         assertNothingFound("boiler serial 1234567890 is on the plate behind the panel")
         assertNothingFound("Worktop depths 300 600 900 mm and the sink is undermount")
     }
 
     @Test
-    fun `nothing in the shape of a number separates an SI grouped quantity from a dialable run`() {
-        val serial = "1 234 567 890"
-        val dialable = "9 175 550 199"
-        assertEquals(
-            digitGroupsOf(serial),
-            digitGroupsOf(dialable),
-            "the SI-separated serial above and the dialable number beside it are pinned as behaving the same " +
-                "way because nothing distinguishes them by shape: same group widths, same separators, same " +
-                "total. If this assertion ever fails, a shape-based narrowing has become possible and the cost " +
-                "pinned above stops being unavoidable",
-        )
-        assertPhoneNumber(serial)
-        assertPhoneNumber(dialable)
+    fun `a run the surrounding words name as something else is not a dialable run broken up by stray digits`() {
+        listOf(
+            "boiler serial 1 234 567 890 is on the plate behind the panel",
+            "the meter reading was 1 234 567 890 when I looked this morning",
+            "Radiator widths in the hall are 100 200 300 3 mm across the flat",
+        ).forEach(::assertNothingFound)
+        assertPhoneNumber("the quote came to 1 250 000 000 lira for the whole block here")
+    }
+
+    @Test
+    fun `an SI grouped quantity and a dialable run with no words around either are read the same way`() {
+        assertPhoneNumber("1 234 567 890")
+        assertPhoneNumber("9 175 550 199")
     }
 
     @Test

@@ -34,6 +34,9 @@ private val DIGIT_GROUP = Regex("""\p{Nd}++""")
 
 private val THOUSANDS_GROUPED_SEPARATOR = Regex(THOUSANDS_PUNCTUATION)
 
+private val NAMES_THE_NUMBER_AS_SOMETHING_ELSE =
+    Regex("""(?i)\b$NAMES_A_NUMBER_AS_SOMETHING_ELSE\b""")
+
 private val UNQUALIFIED_NUMBER_CUE =
     Regex("""(?i)(?<!\b$NAMES_A_NUMBER_AS_SOMETHING_ELSE\p{Zs}{0,4})\bnumbers?\b""")
 
@@ -79,15 +82,30 @@ internal fun holdsPhoneNumberInAlreadyFoldedText(folded: String): Boolean =
     PHONE_CANDIDATE.findAll(folded).any { isAPhoneNumber(folded, it) } ||
         PUNCTUATION_GROUPED_CANDIDATE.findAll(folded).any { isAPhoneNumber(folded, it) }
 
+private data class WordsAroundTheRun(
+    val cued: Boolean,
+    val namedOtherwise: Boolean,
+)
+
+private fun wordsAround(
+    folded: String,
+    candidate: MatchResult,
+): WordsAroundTheRun {
+    val from = (candidate.range.first - PHONE_CUE_WINDOW).coerceAtLeast(0)
+    val to = (candidate.range.last + 1 + PHONE_CUE_WINDOW).coerceAtMost(folded.length)
+    val around = folded.substring(from, to)
+    return WordsAroundTheRun(
+        cued = PHONE_CUE.containsMatchIn(around) || UNQUALIFIED_NUMBER_CUE.containsMatchIn(around),
+        namedOtherwise = NAMES_THE_NUMBER_AS_SOMETHING_ELSE.containsMatchIn(around),
+    )
+}
+
 private fun isAPhoneNumber(
     folded: String,
     candidate: MatchResult,
 ): Boolean {
     val groups = DIGIT_GROUP.findAll(candidate.value).map { characterCount(it.value) }.toList()
-    val from = (candidate.range.first - PHONE_CUE_WINDOW).coerceAtLeast(0)
-    val to = (candidate.range.last + 1 + PHONE_CUE_WINDOW).coerceAtMost(folded.length)
-    val around = folded.substring(from, to)
-    val cued = PHONE_CUE.containsMatchIn(around) || UNQUALIFIED_NUMBER_CUE.containsMatchIn(around)
+    val words = wordsAround(folded, candidate)
     val prefixed = candidate.value.startsWith(INTERNATIONAL_PREFIX)
     val separators = DIGIT_GROUP.split(candidate.value).drop(1).dropLast(1)
     val punctuationGrouped = isGroupedByTheThousandsMarks(separators)
@@ -95,7 +113,7 @@ private fun isAPhoneNumber(
     if (digits in PHONE_DIGIT_COUNT &&
         (
             isSpreadOneDigitToASeparator(groups, separators) ||
-                hasPhoneShape(groups, digits, prefixed, cued, punctuationGrouped)
+                hasPhoneShape(groups, digits, prefixed, words, punctuationGrouped)
         )
     ) {
         return true
@@ -107,7 +125,7 @@ private fun isAPhoneNumber(
             unpadded,
             digits,
             prefixed && groups.first() != ONE_DIGIT,
-            cued,
+            words,
             punctuationGrouped,
         )
 }
@@ -119,16 +137,16 @@ private fun hasPhoneShape(
     groups: List<Int>,
     digitsBeforeTrimming: Int,
     internationallyPrefixed: Boolean,
-    cued: Boolean,
+    words: WordsAroundTheRun,
     punctuationGrouped: Boolean,
 ): Boolean =
     when {
         punctuationGrouped && isGroupedLikeThousands(groups) -> false
         internationallyPrefixed -> true
-        groups.size == ONE_GROUP -> cued
+        groups.size == ONE_GROUP -> words.cued
         !isGroupedWithinAPhoneNumbersLimits(groups) -> false
-        cued -> true
-        else -> isDialableWithoutACue(groups, digitsBeforeTrimming)
+        words.cued -> true
+        else -> isDialableWithoutACue(groups, digitsBeforeTrimming, words.namedOtherwise)
     }
 
 private fun isGroupedLikeThousands(groups: List<Int>): Boolean =
@@ -143,6 +161,7 @@ private fun isGroupedWithinAPhoneNumbersLimits(groups: List<Int>): Boolean =
 private fun isDialableWithoutACue(
     groups: List<Int>,
     digitsBeforeTrimming: Int,
+    namedOtherwise: Boolean,
 ): Boolean {
     if (groups.size < FEWEST_GROUPS_NO_OTHER_NUMBER_USES) return false
     val digits = groups.sum()
@@ -152,7 +171,8 @@ private fun isDialableWithoutACue(
             groups[groups.size - GROUPS_FROM_THE_END_TO_THE_LINES_OWN_GROUP] in
             DIGITS_IN_THE_GROUP_BEFORE_THE_LINE
     val strayDigitsBrokeUpADialableRun =
-        digitsBeforeTrimming == DIGITS_IN_A_DIALABLE_NUMBER &&
+        !namedOtherwise &&
+            digitsBeforeTrimming == DIGITS_IN_A_DIALABLE_NUMBER &&
             digitsBeforeTrimming > digits &&
             groups.any { it == DIGITS_IN_AN_EXCHANGE_GROUP }
     return endsLikeAnExchangeAndALine || strayDigitsBrokeUpADialableRun
