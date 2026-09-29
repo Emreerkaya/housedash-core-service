@@ -26,6 +26,15 @@ class UnrepresentableStateTest {
     }
 
     @Test
+    fun `both case entry points hand back the sealed interface rather than a variant`() {
+        val entryPoints =
+            Case.Companion::class.java.declaredMethods
+                .filter { it.name in setOf("draft", "rehydrate") }
+        assertEquals(2, entryPoints.size)
+        entryPoints.forEach { assertEquals(Case::class.java, it.returnType, it.name) }
+    }
+
+    @Test
     fun `no constructor of any case variant accepts the state as an argument`() {
         variants.forEach { variant ->
             variant.declaredConstructors.forEach { constructor ->

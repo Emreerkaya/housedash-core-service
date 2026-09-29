@@ -140,7 +140,8 @@ class CaseTest {
         val early = Instant.parse("2026-09-24T09:00:00Z")
         val thrown =
             assertFailsWith<CorruptCase> {
-                Case.draft(caseId(), nesterId(), createdAt).describe(nesterId(), description(), emptyList(), early)
+                assertIs<DraftCase>(Case.draft(caseId(), nesterId(), createdAt))
+                    .describe(nesterId(), description(), emptyList(), early)
             }
         assertEquals(CaseFault.DESCRIBED_BEFORE_CREATED, thrown.fault)
     }

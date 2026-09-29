@@ -23,7 +23,7 @@ private fun <T> ok(outcome: Outcome<T, CaseError>): T = assertIs<Outcome.Ok<T>>(
 internal fun draft(
     owner: NesterId = nesterId(),
     at: Instant = createdAt,
-): DraftCase = Case.draft(caseId(), owner, at)
+): DraftCase = assertIs<DraftCase>(Case.draft(caseId(), owner, at))
 
 internal fun described(
     photos: List<PhotoId> = listOf(photoId()),

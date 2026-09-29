@@ -37,33 +37,18 @@ class DescribedCase private constructor(
         }
 
         fun rehydrated(
-            row: CaseRow,
-            photos: List<String>,
-            id: CaseId,
-            owner: NesterId,
-        ): DescribedCase {
-            val text = row.description ?: throw CorruptCase(CaseFault.DESCRIPTION_ABSENT)
-            val describedAt = row.describedAt ?: throw CorruptCase(CaseFault.DESCRIBED_AT_ABSENT)
-            return DescribedCase(
-                id,
-                owner,
-                row.createdAt,
-                descriptionOrThrow(text),
-                CasePhotos.rehydrated(photos.map { photoIdOrThrow(it) }),
+            draft: DraftCase,
+            description: Description,
+            photos: List<PhotoId>,
+            describedAt: Instant,
+        ): DescribedCase =
+            DescribedCase(
+                draft.id,
+                draft.owner,
+                draft.createdAt,
+                description,
+                CasePhotos.rehydrated(photos),
                 describedAt,
             )
-        }
     }
 }
-
-private fun photoIdOrThrow(raw: String): PhotoId =
-    when (val parsed = PhotoId.of(raw)) {
-        is Outcome.Ok -> parsed.value
-        is Outcome.Err -> throw CorruptCase(CaseFault.MALFORMED_PHOTO_ID)
-    }
-
-private fun descriptionOrThrow(raw: String): Description =
-    when (val parsed = Description.of(raw)) {
-        is Outcome.Ok -> parsed.value
-        is Outcome.Err -> throw CorruptCase(CaseFault.DESCRIPTION_REJECTED)
-    }
