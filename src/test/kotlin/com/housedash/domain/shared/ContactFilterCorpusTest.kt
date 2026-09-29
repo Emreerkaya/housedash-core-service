@@ -11,11 +11,11 @@ import kotlin.test.fail
 
 private const val CORPUS_RESOURCE = "i7-corpus.tsv"
 
-private const val ROWS_THE_CORPUS_HOLDS = 170
+private const val ROWS_THE_CORPUS_HOLDS = 171
 
-private const val LABELLED_ROWS_THE_CORPUS_HOLDS = 160
+private const val LABELLED_ROWS_THE_CORPUS_HOLDS = 161
 
-private const val DISAGREEMENTS_PINNED_AT_THIS_COMMIT = 45
+private const val DISAGREEMENTS_PINNED_AT_THIS_COMMIT = 46
 
 private const val ROWS_TOO_SHORT_TO_BE_A_DESCRIPTION = 62
 

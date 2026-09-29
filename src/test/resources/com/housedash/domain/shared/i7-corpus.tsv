@@ -57,10 +57,10 @@ ACCEPT	ACCEPT		quotes were 1,500, 2,300, 3,100	the [2,3,2,3] thousands-list regr
 ACCEPT	ACCEPT		12,000, 18,000	the [2,3,2,3] thousands-list regression; closed by the exchange-and-line rule
 ACCEPT	ACCEPT		1,000, 2,500, 10,000	the [2,3,2,3] thousands-list regression; closed by the exchange-and-line rule
 ACCEPT	ACCEPT		1,500; 2,300; 3,100	the [2,3,2,3] thousands-list regression; closed by the exchange-and-line rule
-ACCEPT	REJECT	PhoneNumber	100, 150, 2000 mm	the [2,3,2,3] thousands-list regression; ACCEPT at 458c134
+ACCEPT	REJECT	PhoneNumber	100, 150, 2000 mm	a [3,3,4] quantity list, not the [2,3,2,3] thousands-list class it was filed under; ACCEPT at 458c134
 ACCEPT	ACCEPT		1,200, 1,800, 2,400	the [2,3,2,3] thousands-list regression; closed by the exchange-and-line rule
 ACCEPT	ACCEPT		12,000, 18,000, 24,000	the [2,3,2,3] thousands-list regression; closed by the exchange-and-line rule
-ACCEPT	ACCEPT		Radiator widths:\n300\n450\n600	the [2,3,2,3] thousands-list regression; closed by the exchange-and-line rule
+ACCEPT	ACCEPT		Radiator widths:\n300\n450\n600	a [3,3,3] quantity list, not the [2,3,2,3] thousands-list class it was filed under; closed by the exchange-and-line rule
 ACCEPT	ACCEPT		Radiator sizes are 600 1200 1800 mm across the flat here	three-digit metric run; was pinned as a known cost, closed by the exchange-and-line rule
 ACCEPT	ACCEPT		Worktop depths 300 600 900 mm and the sink is undermount	three-digit metric run; was pinned as a known cost, closed by the exchange-and-line rule
 ACCEPT	ACCEPT		Tile sizes 200 300 400 600 needed for the bathroom floor	three-digit metric run; was pinned as a known cost, closed by the exchange-and-line rule
@@ -169,3 +169,4 @@ REJECT	ACCEPT		🄊🄂🄈 🄆🄆🄆 🄁🄂🄊🄊 is my cell, ring about
 ACCEPT	ACCEPT		the meter reading was 1 234 567 890 when I looked this morning	D268; closed by the same gate, which retires the claim that this cost could not be narrowed
 ACCEPT	ACCEPT		Radiator widths in the hall are 100 200 300 3 mm across the flat	D268; closed by the same gate, the word flat naming the number as something else
 ACCEPT	REJECT	PhoneNumber	the quote came to 1 250 000 000 lira for the whole block here	D268; one of the four rows the SI residual is now, no word around it names the number as anything
+REJECT	ACCEPT		call me on 𝋩𝋡𝋧𝋥𝋥𝋥𝋠𝋡𝋩𝋩 about the leak under the sink here	D264; the digit fold reads a UTF-16 code unit, so 334 supplementary code points with a digit value are not folded, and this gap is pinned open rather than stated as a limit
