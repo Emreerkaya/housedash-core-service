@@ -48,6 +48,8 @@ tasks.register<Test>("integrationTest") {
 
 tasks.test {
     useJUnitPlatform()
+    inputs.file(layout.projectDirectory.file("CODEOWNERS"))
+    inputs.file(layout.projectDirectory.file("scripts/agent-review.sh"))
     finalizedBy(tasks.jacocoTestReport)
 }
 
