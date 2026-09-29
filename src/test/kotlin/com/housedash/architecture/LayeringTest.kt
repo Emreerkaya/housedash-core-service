@@ -622,7 +622,7 @@ class LayeringTest {
     @Test
     fun `the reconstruction boundary now has a subject, and the subject is the repository`() {
         assertEquals(
-            mapOf(persistencePackage to RECONSTRUCTION_ENTRY_POINTS_BY_NAME),
+            mapOf(persistencePackage to RECONSTRUCTION_ROUTES_THE_REPOSITORY_CALLS),
             reconstructionRoutesCalledFromOutsideTheDomain,
             "this rule passed the first time it had a subject, because the package it entitles is the package " +
                 "the repository was written in. That is the rule working rather than the rule being quiet, " +
@@ -630,12 +630,35 @@ class LayeringTest {
                 "actually reconstructs",
         )
         assertEquals(
-            mapOf(persistencePackage to FORGEABLE_ROW_CONSTRUCTORS),
+            mapOf(persistencePackage to ROWS_THE_REPOSITORY_FORGES),
             rowsForgedOutsideTheDomain,
             "forging the row and calling the entry point are the same capability, so the constructor arm needs " +
                 "its own subject; without this leg the whole rule could be satisfied by a repository that " +
                 "reconstructs and never writes",
         )
+    }
+
+    @Test
+    fun `every watched reconstruction route and row is either the repository's or pinned as awaiting one`() {
+        assertEquals(
+            RECONSTRUCTION_ENTRY_POINTS_BY_NAME,
+            RECONSTRUCTION_ROUTES_THE_REPOSITORY_CALLS + RECONSTRUCTION_ROUTES_AWAITING_A_REPOSITORY,
+            "the leg above used to expect the repository to call every route the rule watches, which was true " +
+                "only while every stored row had a repository, and it reddened the first time a row landed " +
+                "ahead of its repository. The watched set is now the union of two sets each pinned by name, so " +
+                "a route is in one or the other and never in neither by accident, and the author of the next " +
+                "repository moves its route across rather than widening anything",
+        )
+        assertEquals(
+            FORGEABLE_ROW_CONSTRUCTORS,
+            ROWS_THE_REPOSITORY_FORGES + ROWS_AWAITING_A_REPOSITORY,
+            "the same split for the constructor arm: a row the repository forges and a row awaiting its " +
+                "repository are both watched, and the difference between them is pinned rather than inferred",
+        )
+        val claimedTwice =
+            RECONSTRUCTION_ROUTES_THE_REPOSITORY_CALLS intersect RECONSTRUCTION_ROUTES_AWAITING_A_REPOSITORY
+        assertTrue(claimedTwice.isEmpty()) { "a route both called and awaiting a repository: $claimedTwice" }
+        assertTrue((ROWS_THE_REPOSITORY_FORGES intersect ROWS_AWAITING_A_REPOSITORY).isEmpty())
     }
 
     @Test
@@ -697,7 +720,18 @@ class LayeringTest {
 
         const val CASE_PACKAGE = "com.housedash.domain.case"
 
-        val AGGREGATE_VARIANTS_BY_NAME = setOf("$CASE_PACKAGE.DraftCase", "$CASE_PACKAGE.DescribedCase")
+        const val MONEY_PACKAGE = "com.housedash.domain.money"
+
+        val AGGREGATE_VARIANTS_BY_NAME =
+            setOf(
+                "$CASE_PACKAGE.DraftCase",
+                "$CASE_PACKAGE.DescribedCase",
+                "$MONEY_PACKAGE.AuthorizedHold",
+                "$MONEY_PACKAGE.CapturedHold",
+                "$MONEY_PACKAGE.ReleasedHold",
+                "$MONEY_PACKAGE.RefundedHold",
+                "$MONEY_PACKAGE.PartRefundedHold",
+            )
 
         val MINT_ROUTES_BY_NAME: Map<String, Set<String>> =
             mapOf(
@@ -720,13 +754,52 @@ class LayeringTest {
                     ),
                 "$CASE_PACKAGE.DraftCase" to setOf("$CASE_PACKAGE.DraftCase\$Companion#of"),
                 "$CASE_PACKAGE.PhotoId" to setOf("$CASE_PACKAGE.PhotoId\$Companion#of"),
+                "$MONEY_PACKAGE.AuthorizedHold" to
+                    setOf(
+                        "$MONEY_PACKAGE.AuthorizedHold\$Companion#of",
+                        "$MONEY_PACKAGE.AuthorizedHold\$Companion#rehydrated",
+                        "$MONEY_PACKAGE.EscrowHold\$Companion#authorize",
+                    ),
+                "$MONEY_PACKAGE.CapturedHold" to
+                    setOf(
+                        "$MONEY_PACKAGE.CapturedHold\$Companion#capturing",
+                        "$MONEY_PACKAGE.CapturedHold\$Companion#rehydrated",
+                    ),
+                "$MONEY_PACKAGE.HoldId" to setOf("$MONEY_PACKAGE.HoldId\$Companion#of"),
+                "$MONEY_PACKAGE.PartRefundedHold" to
+                    setOf(
+                        "$MONEY_PACKAGE.PartRefundedHold\$Companion#settling",
+                        "$MONEY_PACKAGE.PartRefundedHold\$Companion#rehydrated",
+                    ),
+                "$MONEY_PACKAGE.RefundedHold" to
+                    setOf(
+                        "$MONEY_PACKAGE.RefundedHold\$Companion#refunding",
+                        "$MONEY_PACKAGE.RefundedHold\$Companion#rehydrated",
+                    ),
+                "$MONEY_PACKAGE.ReleasedHold" to
+                    setOf(
+                        "$MONEY_PACKAGE.ReleasedHold\$Companion#releasing",
+                        "$MONEY_PACKAGE.ReleasedHold\$Companion#rehydrated",
+                    ),
+                "$MONEY_PACKAGE.Subscription" to setOf("$MONEY_PACKAGE.Subscription\$Companion#flat"),
+                "$MONEY_PACKAGE.SubscriptionId" to setOf("$MONEY_PACKAGE.SubscriptionId\$Companion#of"),
             )
 
-        val RECONSTRUCTION_ENTRY_POINTS_BY_NAME = setOf("$CASE_PACKAGE.Case\$Companion#rehydrate")
+        val RECONSTRUCTION_ENTRY_POINTS_BY_NAME =
+            setOf("$CASE_PACKAGE.Case\$Companion#rehydrate", "$MONEY_PACKAGE.EscrowHold\$Companion#rehydrate")
+
+        val RECONSTRUCTION_ROUTES_THE_REPOSITORY_CALLS = setOf("$CASE_PACKAGE.Case\$Companion#rehydrate")
+
+        val RECONSTRUCTION_ROUTES_AWAITING_A_REPOSITORY = setOf("$MONEY_PACKAGE.EscrowHold\$Companion#rehydrate")
+
+        val ROWS_THE_REPOSITORY_FORGES = setOf("$CASE_PACKAGE.CaseRow")
+
+        val ROWS_AWAITING_A_REPOSITORY = setOf("$MONEY_PACKAGE.HoldRow", "$MONEY_PACKAGE.LedgerRow")
 
         val TYPES_WITH_A_REOPENED_CONSTRUCTOR = emptySet<String>()
 
-        val FORGEABLE_ROW_CONSTRUCTORS = setOf("$CASE_PACKAGE.CaseRow")
+        val FORGEABLE_ROW_CONSTRUCTORS =
+            setOf("$CASE_PACKAGE.CaseRow", "$MONEY_PACKAGE.HoldRow", "$MONEY_PACKAGE.LedgerRow")
 
         const val CONSTRUCTOR = "<init>"
 
@@ -775,6 +848,27 @@ class LayeringTest {
                 "$CASE_PACKAGE.DraftCase\$Companion",
                 "$CASE_PACKAGE.PhotoId",
                 "$CASE_PACKAGE.PhotoId\$Companion",
+                "$MONEY_PACKAGE.AuthorizedHold",
+                "$MONEY_PACKAGE.AuthorizedHold\$Companion",
+                "$MONEY_PACKAGE.CallOutFee",
+                "$MONEY_PACKAGE.CapturedHold",
+                "$MONEY_PACKAGE.CapturedHold\$Companion",
+                "$MONEY_PACKAGE.EscrowHold\$Companion",
+                "$MONEY_PACKAGE.HoldCommand\$Refund",
+                "$MONEY_PACKAGE.HoldId",
+                "$MONEY_PACKAGE.HoldId\$Companion",
+                "$MONEY_PACKAGE.Ledger\$Companion",
+                "$MONEY_PACKAGE.Money\$Companion",
+                "$MONEY_PACKAGE.PartRefundedHold",
+                "$MONEY_PACKAGE.PartRefundedHold\$Companion",
+                "$MONEY_PACKAGE.RefundedHold",
+                "$MONEY_PACKAGE.RefundedHold\$Companion",
+                "$MONEY_PACKAGE.ReleasedHold",
+                "$MONEY_PACKAGE.ReleasedHold\$Companion",
+                "$MONEY_PACKAGE.Subscription",
+                "$MONEY_PACKAGE.Subscription\$Companion",
+                "$MONEY_PACKAGE.SubscriptionId",
+                "$MONEY_PACKAGE.SubscriptionId\$Companion",
             )
     }
 }
