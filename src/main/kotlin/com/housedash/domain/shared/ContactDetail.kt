@@ -119,7 +119,14 @@ internal object TablesTheGuardReads {
 
     const val PUNCTUATION_THE_THOUSANDS_ARM_OWNS = ",;:"
 
-    const val SEPARATOR_BETWEEN_TWO_DIGIT_GROUPS = """[^\p{L}\p{Nd}]"""
+    const val MARK_BETWEEN_TWO_DIGIT_GROUPS = """[^\p{L}\p{Nd}]"""
+
+    const val MARKS_ONE_SEPARATOR_IS_WRITTEN_WITH = "{1,8}+"
+
+    const val SEPARATOR_BETWEEN_TWO_DIGIT_GROUPS =
+        "$MARK_BETWEEN_TWO_DIGIT_GROUPS$MARKS_ONE_SEPARATOR_IS_WRITTEN_WITH"
+
+    const val SEPARATOR_OR_NONE_BETWEEN_TWO_DIGIT_GROUPS = "(?:$SEPARATOR_BETWEEN_TWO_DIGIT_GROUPS)?+"
 
     val waysOfAskingToBeRung =
         listOf(
@@ -287,6 +294,9 @@ internal object TablesTheGuardReads {
         )
 }
 
+private const val SEPARATOR_OR_NONE_BETWEEN_TWO_GROUPS =
+    TablesTheGuardReads.SEPARATOR_OR_NONE_BETWEEN_TWO_DIGIT_GROUPS
+
 private const val SEPARATOR_BETWEEN_TWO_GROUPS = TablesTheGuardReads.SEPARATOR_BETWEEN_TWO_DIGIT_GROUPS
 
 private val CONFUSABLES_FOLDED_TO_LATIN = TablesTheGuardReads.confusablesFoldedToLatin
@@ -336,8 +346,6 @@ private const val BRACKETED_AT =
     """$BRACKET_OPENING_A_WORDED_SEPARATOR""" +
         """at$BRACKET_CLOSING_A_WORDED_SEPARATOR"""
 
-private const val WORDED_AT = """(?:at|$BRACKETED_AT)"""
-
 private val DOT_A_DOMAIN_LABEL_MAY_BE_SEPARATED_BY =
     """[$DOT_A_BRAND_MAY_BE_WRITTEN_WITH\u3002]"""
 
@@ -347,12 +355,14 @@ private const val BRACKETED_DOT =
 
 private const val WORDED_DOT_BETWEEN_DOMAIN_LABELS = """\p{Zs}{1,4}+dot\p{Zs}{1,4}+"""
 
-private const val WORDED_DOT =
-    """(?:dot|$BRACKET_OPENING_A_WORDED_SEPARATOR""" +
-        """dot$BRACKET_CLOSING_A_WORDED_SEPARATOR)"""
+private const val WORDED_AT_HOWEVER_SPACED =
+    """(?:\p{Zs}{0,3}+$BRACKETED_AT\p{Zs}{0,3}+|\p{Zs}{1,4}+at\p{Zs}{1,4}+)"""
+
+private const val WORDED_DOT_HOWEVER_SPACED =
+    """(?:$BRACKETED_DOT|$WORDED_DOT_BETWEEN_DOMAIN_LABELS)"""
 
 private val SEPARATOR_BETWEEN_TWO_DOMAIN_LABELS =
-    """(?:$BRACKETED_DOT|$WORDED_DOT_BETWEEN_DOMAIN_LABELS|""" +
+    """(?:$WORDED_DOT_HOWEVER_SPACED|""" +
         """\p{Zs}{0,3}+$DOT_A_DOMAIN_LABEL_MAY_BE_SEPARATED_BY\p{Zs}{0,3}+)"""
 
 private const val DOMAIN_LABEL = """[A-Za-z0-9\-]{1,63}+"""
@@ -382,13 +392,13 @@ private val DOMAIN_SPLIT_ONE_LETTER_TO_A_LABEL =
 
 private val WORDED_EMAIL =
     Regex(
-        """(?i)\b[A-Za-z0-9._%+\-]{1,64}+\p{Zs}{1,4}+$WORDED_AT\p{Zs}{1,4}+""" +
-            """[A-Za-z0-9\-]{1,63}+\p{Zs}{1,4}+$WORDED_DOT\p{Zs}{1,4}+$COMMON_TLD\b""",
+        """(?i)\b[A-Za-z0-9._%+\-]{1,64}+$WORDED_AT_HOWEVER_SPACED""" +
+            """[A-Za-z0-9\-]{1,63}+$WORDED_DOT_HOWEVER_SPACED$COMMON_TLD\b""",
     )
 
 private val WORDED_AT_BEFORE_A_MAIL_HOST =
     Regex(
-        """(?i)\b[A-Za-z0-9._%+\-]{1,64}+\p{Zs}{1,4}+$WORDED_AT\p{Zs}{1,4}+$CONSUMER_MAIL_HOST""" +
+        """(?i)\b[A-Za-z0-9._%+\-]{1,64}+$WORDED_AT_HOWEVER_SPACED$CONSUMER_MAIL_HOST""" +
             """$SEPARATOR_BETWEEN_TWO_DOMAIN_LABELS$COMMON_TLD\b""",
     )
 
@@ -399,7 +409,8 @@ private val CASH_TAG = Regex("""(?<![A-Za-z0-9])\$[A-Za-z][A-Za-z0-9_]{1,30}+"""
 private val SORT_CODE =
     Regex(
         """(?i)\bsort\p{Zs}?+(?:code)?+\p{Zs}?+:?+\p{Zs}?+""" +
-            """\p{Nd}{2}$SEPARATOR_BETWEEN_TWO_GROUPS?+\p{Nd}{2}$SEPARATOR_BETWEEN_TWO_GROUPS?+\p{Nd}{2}(?!\p{Nd})""",
+            """\p{Nd}{2}$SEPARATOR_OR_NONE_BETWEEN_TWO_GROUPS\p{Nd}{2}""" +
+            """$SEPARATOR_OR_NONE_BETWEEN_TWO_GROUPS\p{Nd}{2}(?!\p{Nd})""",
     )
 
 private val BANK_ACCOUNT =

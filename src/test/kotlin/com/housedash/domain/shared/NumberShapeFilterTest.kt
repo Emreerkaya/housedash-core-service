@@ -14,18 +14,31 @@ private val MARKS_A_NUMBER_MAY_BE_WRITTEN_WITH =
     ((FIRST_PRINTABLE_ASCII..LAST_PRINTABLE_ASCII).map { it.toChar() } + MARKS_OUTSIDE_ASCII_A_NUMBER_IS_WRITTEN_WITH)
         .filterNot { it.isLetterOrDigit() }
 
+private val PADDINGS_A_SEPARATOR_MAY_CARRY =
+    listOf<(Char) -> String>({ "$it " }, { " $it" }, { " $it " }, { "$it  " }, { "  $it  " })
+
 private fun groupedWith(mark: Char): String = "call me on 917${mark}555${mark}0199 about the leak"
 
-private fun spelledOneDigitTo(mark: Char): String =
-    "9175550199".toCharArray().joinToString(mark.toString()) + " is my cell, please ring about the radiator"
+private const val DIALABLE_DIGITS = "9175550199"
+
+private fun spelledOneDigitTo(separators: List<String>): String =
+    DIALABLE_DIGITS
+        .mapIndexed { index, digit ->
+            if (index == 0) digit.toString() else separators[(index - 1) % separators.size] + digit
+        }.joinToString("") + " is my cell, please ring about the radiator"
+
+private fun isFound(text: String): Boolean = contactDetailsIn(text).isNotEmpty()
+
+private fun spelling(separators: List<String>): String =
+    separators.joinToString("/") { separator -> separator.map { "U+%04X".format(it.code) }.joinToString("") }
 
 class NumberShapeFilterTest {
     @Test
     fun `every arm that reads a separator between two digit groups reads the same marks as every other`() {
         val disagreeing =
             MARKS_A_NUMBER_MAY_BE_WRITTEN_WITH.filter { mark ->
-                val grouped = contactDetailsIn(groupedWith(mark)).isNotEmpty()
-                val spelled = contactDetailsIn(spelledOneDigitTo(mark)).isNotEmpty()
+                val grouped = isFound(groupedWith(mark))
+                val spelled = isFound(spelledOneDigitTo(listOf(mark.toString())))
                 grouped != spelled
             }
         assertEquals(
@@ -40,6 +53,63 @@ class NumberShapeFilterTest {
                 "read by one arm and not the other: " +
                 disagreeing.joinToString(", ") { "U+%04X".format(it.code) },
         )
+    }
+
+    @Test
+    fun `a separator is the same separator however it is padded with spaces`() {
+        val disagreeing =
+            MARKS_A_NUMBER_MAY_BE_WRITTEN_WITH.flatMap { mark ->
+                val bare = isFound(spelledOneDigitTo(listOf(mark.toString())))
+                PADDINGS_A_SEPARATOR_MAY_CARRY
+                    .map { padding -> padding(mark) }
+                    .filter { padded -> isFound(spelledOneDigitTo(listOf(padded))) != bare }
+                    .map { padded -> spelling(listOf(padded)) }
+            }
+        assertEquals(
+            emptyList(),
+            disagreeing,
+            "a mark and a space are two code points, and the rule that reads one mark between two digits " +
+                "counted code points, so every one of thirty-two marks was refused bare and accepted with a " +
+                "space after it. The rule counts marks and lets spaces pad them, so these spellings must all " +
+                "be read the way the bare mark is: " + disagreeing.joinToString(", "),
+        )
+    }
+
+    @Test
+    fun `a run spelled with more than one separator mark is read as a run spelled with one`() {
+        val readSingly =
+            MARKS_A_NUMBER_MAY_BE_WRITTEN_WITH
+                .filterNot { it.category == CharCategory.SPACE_SEPARATOR }
+                .filter { isFound(spelledOneDigitTo(listOf(it.toString()))) }
+        val disagreeing =
+            readSingly.flatMap { first ->
+                readSingly
+                    .filterNot { it == first }
+                    .map { second -> listOf(first.toString(), second.toString()) }
+                    .filterNot { isFound(spelledOneDigitTo(it)) }
+                    .map { spelling(it) }
+            }
+        assertEquals(
+            emptyList(),
+            disagreeing,
+            "the arm that reads a number spread one digit to a separator required one spelling throughout, " +
+                "which is the assumption the code makes about its own input rather than a property of a phone " +
+                "number, so a run two keystrokes from a pinned refusal was stored. The pairs are drawn from " +
+                "the marks this same guard reads singly rather than listed, so a mark cannot be closed here " +
+                "and left open there. These mixed spellings are not read: " + disagreeing.joinToString(", ") +
+                ". What this sweep does not reach is a spelling that mixes a space with a mark: the spaces in " +
+                "a run group it, so those are the case below",
+        )
+    }
+
+    @Test
+    fun `spaces in a mixed spelling group the run, and a grouping no number uses stays an open gap`() {
+        assertPhoneNumber("9,1,7 5,5,5 0,1,9,9 is my cell, please ring about the radiator")
+        assertPhoneNumber("9.1.7 5.5.5 0.1.9.9 is my cell, please ring about the radiator")
+        assertPhoneNumber("9-1-7 5-5-5 0-1-9-9 is my cell, please ring about the radiator")
+        assertNothingFound("9-1 7-5 5-5 0-1 9-9 is my cell, please ring about the radiator")
+        assertNothingFound("call me when the 1/2 3/4 3/8 5/8 7/8 fittings arrive")
+        assertNothingFound("fittings \u00BD \u00BE \u215C \u215D \u215E needed here")
     }
 
     @Test

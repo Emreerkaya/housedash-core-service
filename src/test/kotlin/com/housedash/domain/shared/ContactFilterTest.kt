@@ -286,8 +286,11 @@ class ContactFilterTest {
     }
 
     @Test
-    fun `nine digits one to a separator is the shortest spread out number matched`() {
-        assertPhoneNumber("9 1 7 5 5 5 0 1 9")
+    fun `ten digits one to a separator is the shortest spread out number matched`() {
+        assertPhoneNumber("9 1 7 5 5 5 0 1 9 9")
+        assertNothingFound("9 1 7 5 5 5 0 1 9")
+        assertNothingFound("replace washers 1, 2, 3, 4, 5, 6, 7, 8, 9 in that order please now")
+        assertNothingFound("replace washers 1 2 3 4 5 6 7 8 9 in that order please now")
     }
 
     @Test
