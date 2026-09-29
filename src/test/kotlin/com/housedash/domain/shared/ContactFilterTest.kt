@@ -258,9 +258,182 @@ class ContactFilterTest {
     }
 
     @Test
-    fun `a grouped number named as something other than a phone is not a phone number`() {
-        assertNothingFound("part 917-555-0199 is the one that failed")
-        assertNothingFound("serial 917 555 0199 on the burner plate")
+    fun `a phone shaped grouping is a phone number however the digits are named`() {
+        listOf(
+            "part 917-555-0199 is the one that failed",
+            "serial 917 555 0199 on the burner plate",
+            "ref 917-555-0199",
+            "licence 917.555.0199",
+        ).forEach(::assertPhoneNumber)
+    }
+
+    @Test
+    fun `a word naming the digits as something else no longer vetoes phone detection`() {
+        listOf(
+            "ref 917-555-0199",
+            "door code 917-555-0199 call me",
+            "policy 917 555 0199 phone me",
+            "part 9175550199 call",
+            "licence 917.555.0199",
+            "batch 917 555 0199 text me",
+            "my order ref is 917-555-0199 call anytime",
+        ).forEach(::assertPhoneNumber)
+    }
+
+    @Test
+    fun `an explicit contact verb carries an ungrouped run that no other cue would carry`() {
+        assertPhoneNumber("part 9175550199 call")
+        assertPhoneNumber("my number 9175550199")
+        assertNothingFound("part 9175550199 on the plate")
+    }
+
+    @Test
+    fun `a number qualified as something else is not a phone cue but a bare one is`() {
+        assertNothingFound("serial number 1234567890 is on the plate behind the panel")
+        assertNothingFound("invoice number 1234567890 is still unpaid")
+        assertPhoneNumber("the number is 1234567890 if you want it")
+    }
+
+    @Test
+    fun `a default ignorable character between two letters never hides a brand`() {
+        listOf(
+            "ca\u200Dsh.app/bobby",
+            "ven\u200Dmo me instead",
+            "pay\u200Dpal.me/bobby",
+            "insta\u200Dgram.com/bobplumber",
+            "whats\u200Dapp me",
+            "te\u200Dlegram.me/bobplumber",
+        ).forEach { text ->
+            assertTrue(contactDetailsIn(text).isNotEmpty(), text)
+        }
+        assertTrue(contactDetailsIn("t.me/bobplumber").isNotEmpty())
+        assertTrue(contactDetailsIn("t.me\u2044bobplumber").isNotEmpty())
+    }
+
+    @Test
+    fun `a comma or a colon separates the groups of a phone number`() {
+        assertPhoneNumber("917,555,0199 is best")
+        assertPhoneNumber("917;555;0199 is best")
+        assertPhoneNumber("917:555:0199 is best")
+    }
+
+    @Test
+    fun `a combining mark between two digits does not split the run`() {
+        assertPhoneNumber("917\u0300-555-0199 is best")
+        assertPhoneNumber("call me on 917\u03005550199")
+    }
+
+    @Test
+    fun `an email address with brackets or spaces around its at sign and dots is found`() {
+        listOf(
+            "bob(at)example(dot)com",
+            "bob[at]example[dot]com",
+            "bob{at}example{dot}com",
+            "bob @ example.com",
+            "bob @ example . com",
+            "reach me at bob at gmail.com",
+            "bob@e.x.a.m.p.l.e.c.o.m",
+            "b o b @ e x a m p l e . c o m",
+        ).forEach { text ->
+            assertEquals(setOf(ContactDetail.EmailAddress), contactDetailsIn(text), text)
+        }
+    }
+
+    @Test
+    fun `a signal spaced one character to a separator is still found`() {
+        listOf(
+            "c a s h . a p p / b o b b y",
+            "t . m e / b o b p l u m b e r",
+            "v e n m o me instead",
+            "w h a t s a p p me",
+            "9 1 7 . 5 5 5 . 0 1 9 9",
+        ).forEach { text ->
+            assertTrue(contactDetailsIn(text).isNotEmpty(), text)
+        }
+    }
+
+    @Test
+    fun `thousands separators are money and not a phone number`() {
+        assertNothingFound("the run cost 123,456,789 lira all in")
+        assertNothingFound("the invoice total was 1,250.00 and 1,234 parts")
+        assertPhoneNumber("1234,567,890 is best")
+    }
+
+    @Test
+    fun `a spread out number is only matched when one separator stands between each digit`() {
+        assertPhoneNumber("9 1 7 5 5 5 0 1 9 9")
+        assertNothingFound("steps \u2474\u2475\u2476\u2477\u2478\u2479\u247A\u247B\u247C")
+    }
+
+    @Test
+    fun `a two group candidate needs a cue and a trailing short group is never a phone number`() {
+        assertNothingFound("mail the receipt to 10001-1234 instead")
+        assertPhoneNumber("call 10001-1234 now")
+        assertNothingFound("the gasket stamped 12345-678-90 is split")
+    }
+
+    @Test
+    fun `the numbers a plumbing description actually carries are all accepted`() {
+        listOf(
+            "fittings \u00BD \u00BE \u215C \u215D \u215E needed here",
+            "call me when the \u00BD \u00BE \u215C \u215D \u215E fittings arrive",
+            "fittings 1/2 3/4 3/8 5/8 7/8 needed here",
+            "call me when the 1/2 3/4 3/8 5/8 7/8 fittings arrive",
+            "elbows in 15 mm 22 mm 28 mm and 35 mm please",
+            "the tank is 210 litres and the cylinder is 1,250 mm tall",
+            "the radiator is 1400 x 600 mm and weighs 32 kg",
+            "the pressure gauge reads 1.5 bar and the flow is 12.5 l/min",
+            "mail the receipt to 10001-1234 instead",
+            "the gasket stamped 12345-678-90 is split",
+            "the invoice total was 1,250.00 and 1,234 parts",
+            "the run cost 123,456,789 lira all in",
+            "logged at 12:30:45 2026-09-24 by the engineer",
+            "the fuse blew on 2026-09-24, 350 East 62nd Street",
+            "job 4455 on 2026-09-24 needs 2 washers 12 mm",
+            "steps \u2474\u2475\u2476\u2477\u2478\u2479\u247A\u247B\u247C",
+            "serial number 1234567890 is on the plate behind the panel",
+            "the part number is 0141-445-2266-01 on the label",
+            "appliance model ecoTEC plus 832, serial 21123400123456789",
+            "the manual is at vaillant.co.uk if you want to read it",
+            "3 @ 5.00 each for the washers",
+            "bob at bobsplumbing.co.uk is where the invoices go",
+        ).forEach(::assertNothingFound)
+    }
+
+    private fun insertionsInto(
+        signal: String,
+        inserted: Char,
+        between: (Char) -> Boolean,
+    ): List<String> =
+        signal.indices
+            .drop(1)
+            .filter { between(signal[it - 1]) && between(signal[it]) }
+            .map { signal.take(it) + inserted + signal.substring(it) }
+
+    @Test
+    fun `an invisible character between two letters never defeats a signal`() {
+        val obfuscated =
+            SIGNALS_SPELLED_WITH_LETTERS.flatMap { signal ->
+                INVISIBLE_CHARACTERS.flatMap { insertionsInto(signal, it, Char::isLetter) }
+            }
+        assertTrue(obfuscated.size > SIGNALS_SPELLED_WITH_LETTERS.size)
+        obfuscated.forEach { text -> assertTrue(contactDetailsIn(text).isNotEmpty(), text) }
+    }
+
+    @Test
+    fun `an invisible character between two digits never splits a grouped phone number`() {
+        val obfuscated = INVISIBLE_CHARACTERS.flatMap { insertionsInto("917-555-0199", it, Char::isDigit) }
+        assertTrue(obfuscated.size > INVISIBLE_CHARACTERS.size)
+        obfuscated.forEach(::assertPhoneNumber)
+    }
+
+    @Test
+    fun `spacing a signal one character to a space never defeats it`() {
+        val spread =
+            SIGNALS_SPELLED_AS_ONE_TOKEN.flatMap { signal ->
+                SPACES_A_SPREAD_OUT_SIGNAL_USES.map { signal.toCharArray().joinToString(it) }
+            }
+        spread.forEach { text -> assertTrue(contactDetailsIn(text).isNotEmpty(), text) }
     }
 
     @Test
@@ -327,6 +500,11 @@ class ContactFilterTest {
             "ring 917 five five five 0199",
             "bobsplumbing.co.uk",
             "look me up, the business name is bobs plumbing",
+            "bob at bobsplumbing.co.uk",
+            "v.e.n.m.o me instead",
+            "the pipe run is 917\u2044555\u20440199 mm of copper",
+            "c-a-s-h-a-p-p me instead",
+            "the plate reads 9175550199 and nothing else",
         ).forEach(::assertNothingFound)
     }
 
@@ -344,5 +522,44 @@ class ContactFilterTest {
     @Test
     fun `a grouped code too short to be an iban is left alone`() {
         assertNothingFound("the boiler plate reads GB33 BUKB 2020 is stamped by the door")
+    }
+
+    private companion object {
+        private val SPACES_A_SPREAD_OUT_SIGNAL_USES = listOf(" ", "  ", "\u00A0", "\u2009")
+
+        private val INVISIBLE_CHARACTERS =
+            listOf('\u200D', '\u200B', '\u00AD', '\u2060', '\uFEFF', '\uFE0F', '\u0300', '\u034F')
+
+        private val SIGNALS_SPELLED_WITH_LETTERS =
+            listOf(
+                "cash.app/bobby",
+                "cashapp me",
+                "venmo me instead",
+                "paypal.me/bobby",
+                "zelle please",
+                "gofundme.com/bobby",
+                "instagram.com/bobplumber",
+                "t.me/bobplumber",
+                "telegram.me/bobplumber",
+                "wa.me/bobby",
+                "whatsapp me",
+                "bob@example.com",
+            )
+
+        private val SIGNALS_SPELLED_AS_ONE_TOKEN =
+            listOf(
+                "cash.app/bobby",
+                "venmo",
+                "paypal.me/bobby",
+                "zelle",
+                "gofundme.com/bobby",
+                "instagram.com/bobplumber",
+                "t.me/bobplumber",
+                "telegram.me/bobplumber",
+                "wa.me/bobby",
+                "whatsapp",
+                "bob@example.com",
+                "917.555.0199",
+            )
     }
 }
