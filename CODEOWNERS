@@ -9,3 +9,7 @@
 /src/test/kotlin/com/housedash/invariants/        @Emreerkaya
 /src/main/resources/db/migration/                 @Emreerkaya
 /.github/                                         @Emreerkaya
+
+/src/main/kotlin/com/housedash/app/                      @Emreerkaya
+/src/main/kotlin/com/housedash/adapters/inbound/http/     @Emreerkaya
+/src/main/kotlin/com/housedash/adapters/outbound/         @Emreerkaya

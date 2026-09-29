@@ -17,8 +17,12 @@ kotlin {
 }
 
 dependencies {
+    implementation(platform(libs.spring.boot.dependencies))
+    implementation(libs.spring.boot.starter.web)
+    testImplementation(platform(libs.spring.boot.dependencies))
     testImplementation(kotlin("test"))
     testImplementation(libs.archunit.junit5)
+    testImplementation(libs.spring.boot.starter.test)
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
