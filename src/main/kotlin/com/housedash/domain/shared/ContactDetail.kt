@@ -418,6 +418,8 @@ private val IBAN_CANDIDATE =
 
 private val PAYMENT_PATTERNS = listOf(PAYMENT_SERVICE, CASH_TAG, SORT_CODE, BANK_ACCOUNT, CRYPTO_ADDRESS)
 
+private val DIGITS_A_SHAPE_MAY_STAND_FOR = 0..9
+
 private const val EMAIL_DOMAIN_GROUP = 1
 
 private const val FEWEST_DOMAIN_LABELS = 2
@@ -466,7 +468,7 @@ private fun foldsForMatchingOnly(text: String): List<String> {
                 if (character in LINE_BREAKS_A_DESCRIPTION_BOX_CREATES) {
                     append(' ')
                 } else {
-                    append(CONFUSABLES_FOLDED_TO_LATIN[character] ?: character)
+                    append(CONFUSABLES_FOLDED_TO_LATIN[character] ?: digitThisShapeStandsFor(character) ?: character)
                 }
             }
         }
@@ -475,6 +477,12 @@ private fun foldsForMatchingOnly(text: String): List<String> {
             run.value.filter { it.category != CharCategory.SPACE_SEPARATOR }
         }
     return if (spacingClosed == folded) listOf(folded) else listOf(folded, spacingClosed)
+}
+
+private fun digitThisShapeStandsFor(character: Char): Char? {
+    if (character.isDigit()) return null
+    val value = Character.getNumericValue(character)
+    return if (value in DIGITS_A_SHAPE_MAY_STAND_FOR) '0' + value else null
 }
 
 private fun holdsEmailAddress(folded: String): Boolean =

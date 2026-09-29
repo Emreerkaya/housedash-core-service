@@ -12,6 +12,14 @@ private const val SEPARATORS_A_NUMBER_IS_WRITTEN_WITH =
 
 private const val LETTERS_A_NUMBER_IS_NOT_GROUPED_BY = "xXoO"
 
+private const val LAST_CHARACTER_IN_THE_BASIC_PLANE = 0xFFFF
+
+private const val DIGIT_SHAPES_OUTSIDE_THE_DECIMAL_CATEGORY = 85
+
+private val DIGIT_VALUES = 0..9
+
+private const val ONE_CHARACTER = 1
+
 private val REPRESENTATIVE_OF_A_STRIPPED_CATEGORY =
     mapOf(
         CharCategory.FORMAT to '‍',
@@ -269,6 +277,36 @@ class TableRowCoverageTest {
                 letter.toString(),
                 "the separator rule excludes letters, so a letter between digit groups stays an open gap and is " +
                     "pinned here as one",
+            )
+        }
+    }
+
+    @Test
+    fun `every character unicode gives a digit value is folded to that digit, and there is no table of them`() {
+        val shapes =
+            (0..LAST_CHARACTER_IN_THE_BASIC_PLANE)
+                .map { it.toChar() }
+                .map { Normalizer.normalize(it.toString(), Normalizer.Form.NFKD) }
+                .filter { it.length == ONE_CHARACTER }
+                .map { it.first() }
+                .filter { !it.isDigit() && Character.getNumericValue(it) in DIGIT_VALUES }
+                .distinct()
+        assertEquals(
+            DIGIT_SHAPES_OUTSIDE_THE_DECIMAL_CATEGORY,
+            shapes.size,
+            "the number of characters this rule reaches changed. The rule is asked rather than listed on " +
+                "purpose, because the corpus claimed circled digits were caught when that was true of one " +
+                "member of the class and nothing else, so the count is pinned instead of the members",
+        )
+        shapes.forEach { shape ->
+            assertFinds(
+                ContactDetail.PhoneNumber,
+                "917 555 019$shape",
+                "U+%04X".format(shape.code),
+                "the rule that a character unicode gives a digit value stands for that digit. The case carries " +
+                    "no cue on purpose: uncued, the run is read only when it reaches ten digits, so the shape " +
+                    "supplying the tenth is what the assertion turns on. With a cue, nine digits are enough and " +
+                    "the case cannot tell a folded shape from a separator",
             )
         }
     }
