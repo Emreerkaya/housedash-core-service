@@ -123,7 +123,7 @@ REJECT	ACCEPT		Water pours through the ceiling below, write to bob@mail,ru for t
 REJECT	REJECT	EmailAddress	Water pours through the ceiling below, write to bobby at yahoo·com about it	closed by giving the worded-at arm the dot vocabulary the domain arm already had
 ACCEPT	ACCEPT		boiler serial 1 234 567 890 is on the plate behind the panel	D268; closed by gating the stray-digit arm on the words that name a number as something else
 ACCEPT	REJECT	PhoneNumber	We counted 8 200 300 400 mm lengths of skirting in the hall here	a size list with a count in front; the same list without the count is accepted
-ACCEPT	REJECT	PhoneNumber	the quote came to 1 250 000 000 lira for the whole block here	a large sum written with SI separators
+ACCEPT	REJECT	PhoneNumber	the quote came to 1 250 000 000 lira for the whole block here	D268, D289; a large sum written with SI separators, and one of the four rows the SI residual is. It was two rows until this commit, byte for byte the same sentence twice, which the corpus could not see because it pinned three counts and not uniqueness
 REJECT	REJECT	EmailAddress	Kitchen tap drips from the base, email me at bob@gmail.com for photos	an EmailAddress at a length that reaches Description.of
 REJECT	REJECT	PaymentLink	Kitchen tap drips from the base, pay me on cash.app/$bobplumber when done	a PaymentLink at a length that reaches Description.of; every payment-brand row before this one was under twenty characters
 REJECT	REJECT	PaymentLink	Kitchen tap drips from the base, my paypal is bobplumber if that is easier	a payment brand at a length that reaches Description.of
@@ -168,8 +168,7 @@ ACCEPT	ACCEPT		replace washers 1 2 3 4 5 6 7 8 9 in that order please now	D292; 
 REJECT	REJECT	PhoneNumber	🄊🄂🄈 🄆🄆🄆 🄁🄂🄊🄊 is my cell, ring about the leak	D264; comma-bearing digit shapes decompose to plain ASCII and the marks are then not all the same. Closed as a side effect of reading a separator by the marks it holds rather than by the string it is
 ACCEPT	ACCEPT		the meter reading was 1 234 567 890 when I looked this morning	D268; closed by the same gate, which retires the claim that this cost could not be narrowed
 ACCEPT	ACCEPT		Radiator widths in the hall are 100 200 300 3 mm across the flat	D268; closed by the same gate, the word flat naming the number as something else
-ACCEPT	REJECT	PhoneNumber	the quote came to 1 250 000 000 lira for the whole block here	D268; one of the four rows the SI residual is now, no word around it names the number as anything
-REJECT	ACCEPT		call me on 𝋩𝋡𝋧𝋥𝋥𝋥𝋠𝋡𝋩𝋩 about the leak under the sink here	D264; the digit fold reads a UTF-16 code unit, so 334 supplementary code points with a digit value are not folded, and this gap is pinned open rather than stated as a limit
+REJECT	ACCEPT		call me on 𝋩𝋡𝋧𝋥𝋥𝋥𝋠𝋡𝋩𝋩 about the leak under the sink here	D264; the digit fold reads a UTF-16 code unit, so 335 supplementary code points with a digit value are not folded, and this gap is pinned open rather than stated as a limit
 REJECT	REJECT	PhoneNumber	9,1,7-5,5,5-0,1,9,9 is my cell, please ring about the leaking radiator	D303, D305; a run spelled two ways, refused where every uniform spelling was already refused
 REJECT	REJECT	PhoneNumber	9,1,7 5,5,5 0,1,9,9 is my cell, please ring about the leaking radiator	D303, D305; marks inside each group and spaces between them, grouped 3-3-4 as a number is grouped
 REJECT	REJECT	PhoneNumber	9.1.7 5.5.5 0.1.9.9 is my cell, please ring about the leaking radiator	D303, D305; the same two-level spelling with a dot inside each group
@@ -196,3 +195,5 @@ ACCEPT	ACCEPT		the unit is rated 10,000, 12,000 or 14,000 BTU, call me anytime	D
 ACCEPT	ACCEPT		the three quotes were 1,500, 2,300, 3,100 for the job, call me	D288; the cued twin of line 56
 ACCEPT	ACCEPT		boiler serviced 2019, 2021, 2023 and now it leaks, call me anytime	D288; the sentence the finding was reported with, a list of four-digit numbers separated by a list mark
 ACCEPT	ACCEPT		the swap was quoted at 12,000, 18,000, 24,000 so far, call me	D288; the cued twin of line 62
+ACCEPT	REJECT	PhoneNumber	I need 2 600 900 1200 mm boards cut for the shelves in the alcove	D289; the third of the four sentences the SI residual is pinned with, rowed so the two instruments agree about the size of a residual they both describe
+ACCEPT	REJECT	PhoneNumber	The riser needs 6 100 150 200 mm couplers to finish the run here	D289; the fourth of the four sentences the SI residual is pinned with
