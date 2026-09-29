@@ -4,6 +4,8 @@ import com.tngtech.archunit.base.DescribedPredicate
 import com.tngtech.archunit.core.domain.JavaCall
 import com.tngtech.archunit.core.domain.JavaClass
 import com.tngtech.archunit.core.domain.JavaModifier
+import com.tngtech.archunit.core.domain.JavaParameterizedType
+import com.tngtech.archunit.core.domain.JavaType
 import com.tngtech.archunit.core.domain.properties.HasName
 import com.tngtech.archunit.core.domain.properties.HasOwner
 import com.tngtech.archunit.core.importer.ClassFileImporter
@@ -43,6 +45,10 @@ class LayeringTest {
     private val boundedContextPackage = "com.housedash.domain."
 
     private val persistencePackage = "com.housedash.adapters.outbound.persistence"
+
+    private val inPersistence: (JavaClass) -> Boolean = { clazz ->
+        clazz.packageName == persistencePackage || clazz.packageName.startsWith("$persistencePackage.")
+    }
 
     private val inSharedKernel: (JavaClass) -> Boolean = { clazz ->
         clazz.packageName == sharedKernelPackage || clazz.packageName.startsWith("$sharedKernelPackage.")
@@ -86,9 +92,11 @@ class LayeringTest {
         domain
             .flatMap { it.methods }
             .filter { reachableFromOutside(it.modifiers) }
-            .filter { JavaModifier.STATIC in it.modifiers || it.owner.simpleName == "Companion" }
-            .filter { closedConstruction.test(it.rawReturnType) }
-            .groupBy({ it.rawReturnType.name }, { "${it.owner.name}#${it.name}" })
+            .flatMap { method ->
+                typesNamedIn(method.returnType)
+                    .filter(closedConstruction::test)
+                    .map { produced -> produced.name to "${method.owner.name}#${method.name}" }
+            }.groupBy({ it.first }, { it.second })
             .mapValues { it.value.toSet() }
 
     private val typesWithAReopenedConstructor: Set<String> =
@@ -112,6 +120,14 @@ class LayeringTest {
             .filter { row -> row.constructors.any { reachableFromOutside(it.modifiers) } }
             .map { it.name }
             .toSet()
+
+    private fun typesNamedIn(returned: JavaType): List<JavaClass> =
+        listOf(returned.toErasure()) +
+            if (returned is JavaParameterizedType) {
+                returned.actualTypeArguments.flatMap { typesNamedIn(it) }
+            } else {
+                emptyList()
+            }
 
     private fun callTo(
         methodName: String,
@@ -318,7 +334,7 @@ class LayeringTest {
     }
 
     @Test
-    fun `a closed domain type is minted only inside its own package, and from a stored row only by the repository`() {
+    fun `a closed domain type is minted only inside its own package`() {
         classes()
             .should(
                 MintBoundary(
@@ -327,9 +343,19 @@ class LayeringTest {
                     mintTargetsByProducedType.values.flatten().toSet(),
                 ) { caller, owner -> caller.packageName == owner.packageName },
             ).`as`(
-                "a type whose constructors a bounded context made private is minted by that package alone; " +
-                    "every factory returning one is a mint route and is watched here, not only the constructor",
+                "a type whose constructors a bounded context made private is minted by that package alone. " +
+                    "What is watched is every reachable domain member that names such a type in its return " +
+                    "position, directly or as a type argument of a wrapper, plus every constructor call: " +
+                    "${mintTargetsByProducedType.values.sumOf { it.size }} routes over " +
+                    "${mintTargetsByProducedType.size} types, $mintTargetsByProducedType. What is not " +
+                    "watched is a route that never names the type it produces — a member declared to return " +
+                    "a supertype, an Any, or a value written into a parameter — and D173's residual, which " +
+                    "is that anyone holding a NesterId may claim it as an owner",
             ).check(codebase)
+    }
+
+    @Test
+    fun `an aggregate is reconstructed from a stored row only by the repository`() {
         classes()
             .should(
                 MintBoundary(
@@ -337,7 +363,7 @@ class LayeringTest {
                     storedRow,
                     reconstructionEntryPoints,
                 ) { caller, owner ->
-                    caller.packageName == owner.packageName || caller.packageName.startsWith(persistencePackage)
+                    caller.packageName == owner.packageName || inPersistence(caller)
                 },
             ).`as`(
                 "an aggregate is reconstructable by the repository and by nothing else; forging the row and " +
