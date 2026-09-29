@@ -265,13 +265,13 @@ class TableRowCoverageTest {
     }
 
     @Test
-    fun `a separator between digit groups is anything but a letter, a digit and the thousands marks`() {
+    fun `a separator between digit groups is anything that is neither a letter nor a digit`() {
         SEPARATORS_A_NUMBER_IS_WRITTEN_WITH.forEach { separator ->
             assertFinds(
                 ContactDetail.PhoneNumber,
                 "call me on 917${separator}555${separator}0199",
                 separator.code.toString(),
-                "the rule that a separator is anything but a letter, a digit and the three thousands marks",
+                "the rule that a separator is anything that is neither a letter nor a digit",
             )
         }
     }
