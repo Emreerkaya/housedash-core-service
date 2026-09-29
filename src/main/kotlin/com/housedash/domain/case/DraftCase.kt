@@ -28,26 +28,5 @@ class DraftCase private constructor(
             owner: NesterId,
             createdAt: Instant,
         ): DraftCase = DraftCase(id, owner, createdAt)
-
-        fun rehydrated(
-            row: CaseRow,
-            photos: List<String>,
-            id: CaseId,
-            owner: NesterId,
-        ): DraftCase {
-            draftFaultOf(row, photos)?.let { throw CorruptCase(it) }
-            return DraftCase(id, owner, row.createdAt)
-        }
     }
 }
-
-private fun draftFaultOf(
-    row: CaseRow,
-    photos: List<String>,
-): CaseFault? =
-    when {
-        row.description != null -> CaseFault.DESCRIPTION_PRESENT_ON_DRAFT
-        row.describedAt != null -> CaseFault.DESCRIBED_AT_PRESENT_ON_DRAFT
-        photos.isNotEmpty() -> CaseFault.PHOTOS_PRESENT_ON_DRAFT
-        else -> null
-    }

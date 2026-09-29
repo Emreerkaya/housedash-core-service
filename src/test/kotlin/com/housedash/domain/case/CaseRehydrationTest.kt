@@ -174,6 +174,12 @@ class CaseRehydrationTest {
     }
 
     @Test
+    fun `a described row with a rejected description and no description time reports the time absent first`() {
+        val row = describedRow(description = "tap", describedAt = null)
+        assertEquals(CaseFault.DESCRIBED_AT_ABSENT, faultOf(row))
+    }
+
+    @Test
     fun `a described row with a rejected description and a malformed photo id reports the description first`() {
         assertEquals(CaseFault.DESCRIPTION_REJECTED, faultOf(describedRow(description = "tap"), listOf("oops")))
     }
