@@ -179,4 +179,28 @@ class DescriptionTest {
         assertEquals(20, Description.MIN_LENGTH)
         assertEquals(2000, Description.MAX_LENGTH)
     }
+
+    @Test
+    fun `a description that is both too short and carries a phone number is reported as too short`() {
+        assertEquals(CaseError.DescriptionTooShort(18, 20), errorOf("call me 9175550199"))
+    }
+
+    @Test
+    fun `a description that is both too long and carries an email address is reported as too long`() {
+        val raw = "bob@example.com " + "a".repeat(2000)
+        assertIs<CaseError.DescriptionTooLong>(errorOf(raw))
+    }
+
+    @Test
+    fun `a description that is not plain text and carries a phone number is reported as not plain text`() {
+        assertEquals(
+            CaseError.DescriptionNotPlainText,
+            errorOf("call me on 917-555-0199 about the tap\u0000"),
+        )
+    }
+
+    @Test
+    fun `a description that is both too short and not plain text is reported as not plain text`() {
+        assertEquals(CaseError.DescriptionNotPlainText, errorOf("tap\u0000"))
+    }
 }
