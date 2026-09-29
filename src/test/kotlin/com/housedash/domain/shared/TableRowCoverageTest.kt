@@ -82,6 +82,8 @@ private const val APOSTROPHES_A_BRAND_MAY_CARRY = "'\u2019\u02BC\u055A"
 
 private const val LINE_BREAKS_THE_TABLE_LISTS = "\n\r\t\u000B\u000C\u0085\u2028\u2029"
 
+private const val PUNCTUATION_THE_THOUSANDS_ARM_OWNS = ",;:"
+
 private const val WAYS_OF_ASKING_TO_BE_RUNG =
     "call calls called calling text texts texted ring rings dial dials phone phones telephone tel mobile " +
         "cell cellphone what~'s~app sms"
@@ -189,6 +191,11 @@ class TableRowCoverageTest {
 
     @Test
     fun `every punctuation table this guard reads holds exactly the entries this test names`() {
+        assertTableHolds(
+            PUNCTUATION_THE_THOUSANDS_ARM_OWNS,
+            TablesTheGuardReads.PUNCTUATION_THE_THOUSANDS_ARM_OWNS.toList(),
+            "the table of marks the thousands arm reads",
+        )
         assertTableHolds(
             APOSTROPHES_A_BRAND_MAY_CARRY,
             TablesTheGuardReads.apostrophesABrandMayCarry,

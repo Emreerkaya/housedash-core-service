@@ -129,6 +129,30 @@ check 'a review by a drive-by contributor is ignored' 1 "$untouched" \
     "$(set_of "$(review architecture clean "$sha" true CONTRIBUTOR)" "$(review security clean)" "$(review testing clean)" "$(review performance clean)")" \
     'is not entitled to gate a merge'
 
+check 'an APPROVED review carrying a blocked verdict still blocks' 1 "$untouched" \
+    "$(set_of "$(review_as APPROVED User architecture blocked)" "$(review security clean)" "$(review testing clean)" "$(review performance clean)")" \
+    'reports verdict blocked'
+
+check 'an APPROVED review is counted, because approving is how a review is filed here' 0 "$untouched" \
+    "$(set_of "$(review_as APPROVED User architecture clean)" "$(review security clean)" "$(review testing clean)" "$(review performance clean)")" \
+    'none blocked' '[]' 'is not entitled'
+
+check 'a review by an organisation member gates exactly as the owner does' 0 "$untouched" \
+    "$(set_of "$(review architecture clean "$sha" true MEMBER)" "$(review security clean)" "$(review testing clean)" "$(review performance clean)")" \
+    'none blocked' '[]' 'is not entitled'
+
+check 'a blocked verdict from an organisation member blocks' 1 "$untouched" \
+    "$(set_of "$(review architecture blocked "$sha" true MEMBER)" "$(review security clean)" "$(review testing clean)" "$(review performance clean)")" \
+    'reports verdict blocked'
+
+check 'a review by a collaborator gates exactly as the owner does' 0 "$untouched" \
+    "$(set_of "$(review architecture clean "$sha" true COLLABORATOR)" "$(review security clean)" "$(review testing clean)" "$(review performance clean)")" \
+    'none blocked' '[]' 'is not entitled'
+
+check 'a blocked verdict from a collaborator blocks' 1 "$untouched" \
+    "$(set_of "$(review architecture blocked "$sha" true COLLABORATOR)" "$(review security clean)" "$(review testing clean)" "$(review performance clean)")" \
+    'reports verdict blocked'
+
 check 'a trailer that is not the last line does not count' 1 "$untouched" \
     "$(set_of "$(review architecture clean "$sha" true OWNER 'and one more thought afterwards')" "$(review security clean)" "$(review testing clean)" "$(review performance clean)")" \
     'missing: no architecture review'
@@ -231,6 +255,19 @@ for short in 1111111 111111111111111111111111111111111111111 1111111111111111111
         pass=$((pass + 1))
     fi
 done
+
+out=$(PATH="${stub_dir}:${PATH}" \
+    STUB_CHANGED="$untouched" STUB_REVIEWS="$four_dimensions" STUB_THREADS='[]' \
+    PR_NUMBER=1 HEAD_SHA="${sha}"$'\n'"${other}" GITHUB_REPOSITORY=Emreerkaya/housedash-core-service \
+    bash "$gate" 2>&1)
+got=$?
+if [ "$got" -ne 2 ] || ! printf '%s' "$out" | grep -q 'is not a full commit sha'; then
+    printf 'FAIL a HEAD_SHA holding two full shas on two lines must be refused: exit %s\n%s\n\n' "$got" "$out" >&2
+    fail=$((fail + 1))
+else
+    printf 'ok a HEAD_SHA holding two full shas on two lines is refused\n'
+    pass=$((pass + 1))
+fi
 
 out=$(PATH="${stub_dir}:${PATH}" \
     STUB_CHANGED="$untouched" STUB_REVIEWS="$four_dimensions" STUB_THREADS='[]' STUB_FAIL_DIFF=1 \

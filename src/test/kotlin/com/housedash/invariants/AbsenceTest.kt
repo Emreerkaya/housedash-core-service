@@ -90,17 +90,39 @@ class AbsenceTest {
     }
 
     @Test
-    fun `both tripwires scan production code only, and scan this many types and named members`() {
+    fun `both tripwires scan production code only, and scan exactly this many types and named members`() {
         assertTrue(codebase.any { it.simpleName == "Case" })
         assertTrue(codebase.none { it.simpleName == "AbsenceTest" })
         assertTrue(namedMembersOf(codebase.single { it.simpleName == "CaseRow" }).isNotEmpty())
         assertTrue(signalsOf(codebase.single { it.simpleName == "CaseRow" }).contains("row"))
         val types = codebase.count()
         val members = codebase.sumOf { namedMembersOf(it).size }
-        assertTrue(types >= FEWEST_PRODUCTION_TYPES) { "only $types production types were scanned" }
-        assertTrue(members >= FEWEST_NAMED_MEMBERS) { "only $members named members were scanned" }
-        assertTrue(POSITION_STEMS.size >= FEWEST_POSITION_STEMS)
-        assertTrue(MONEY_STEMS.size >= FEWEST_MONEY_STEMS)
+        assertEquals(
+            PRODUCTION_TYPES_THE_SCAN_READS,
+            types,
+            "a floor asks whether the scan still reads a lot; the question is whether it still reads what it " +
+                "read, and the floor this replaces was twenty against sixty-eight, so forty-eight types could " +
+                "leave without anything noticing. The count moves with every commit that adds or removes a " +
+                "type and moving it here is that commit's own edit",
+        )
+        assertEquals(
+            NAMED_MEMBERS_THE_SCAN_READS,
+            members,
+            "the same reason as the type count above: a floor cannot see a member leave the scan",
+        )
+    }
+
+    @Test
+    fun `every keyword table these tripwires read holds exactly the entries this test names`() {
+        assertEquals(POSITION_STEMS_THE_TABLE_HOLDS.split(" "), POSITION_STEMS, TABLE_CONTENTS_NOT_SIZE)
+        assertEquals(MONEY_STEMS_THE_TABLE_HOLDS.split(" "), MONEY_STEMS, TABLE_CONTENTS_NOT_SIZE)
+        assertEquals(ORDERING_CALLS_THE_TABLE_HOLDS.split(" ").toSet(), ORDERING_CALLS, TABLE_CONTENTS_NOT_SIZE)
+        assertEquals(LEAD_OR_JOB_THE_TABLE_HOLDS.split(" ").toSet(), LEAD_OR_JOB, TABLE_CONTENTS_NOT_SIZE)
+        assertEquals(
+            ORDERING_CALLS_THE_COMPILER_INLINES_THE_TABLE_HOLDS.split(" ").toSet(),
+            ORDERING_CALLS_THE_COMPILER_INLINES,
+            TABLE_CONTENTS_NOT_SIZE,
+        )
     }
 
     @Test
@@ -328,13 +350,33 @@ class AbsenceTest {
 
         val WHITESPACE = Regex("""\s+""")
 
-        const val FEWEST_PRODUCTION_TYPES = 20
+        const val PRODUCTION_TYPES_THE_SCAN_READS = 68
 
-        const val FEWEST_NAMED_MEMBERS = 200
+        const val NAMED_MEMBERS_THE_SCAN_READS = 1090
 
-        const val FEWEST_POSITION_STEMS = 13
+        const val TABLE_CONTENTS_NOT_SIZE =
+            "a size floor asks whether a table is still big and the question is whether it is still the set " +
+                "the tripwire was written against. An entry that leaves is invisible to a floor and to a loop " +
+                "over the table alike, because the loop simply stops visiting it, so the contents are pinned " +
+                "here and moving them is a deliberate edit with a case beside it"
 
-        const val FEWEST_MONEY_STEMS = 30
+        const val POSITION_STEMS_THE_TABLE_HOLDS =
+            "rank score promot boost featur sponsor weight priorit pinn posit placem prominen spotlight"
+
+        const val MONEY_STEMS_THE_TABLE_HOLDS =
+            "charge surcharge fee subscription invoice billing tariff amount price cost cent total money " +
+                "payment payable paid payout refund credit debit balance outlay spend expen levy commission " +
+                "margin remit disburs earn revenue wallet budget bonus bounty rebate retainer deposit " +
+                "stipend gratuity toll"
+
+        const val ORDERING_CALLS_THE_TABLE_HOLDS =
+            "sorted sortedBy sortedByDescending sortedDescending sortedWith sortBy sortByDescending sortWith " +
+                "sort maxByOrNull minByOrNull maxWithOrNull minWithOrNull compareBy thenBy"
+
+        const val ORDERING_CALLS_THE_COMPILER_INLINES_THE_TABLE_HOLDS = "maxByOrNull minByOrNull compareBy thenBy"
+
+        const val LEAD_OR_JOB_THE_TABLE_HOLDS =
+            "lead leads job jobs referral referrals enquiry enquiries inquiry inquiries gig gigs prospect prospects"
 
         const val A_TRIPWIRE_NOT_A_PROOF =
             "this test is a tripwire, not a proof, and a keyword list cannot be completed."

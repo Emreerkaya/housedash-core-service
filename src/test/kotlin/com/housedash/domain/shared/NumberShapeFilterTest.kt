@@ -9,7 +9,62 @@ private fun digitGroupsOf(text: String): List<Int> = DIGIT_GROUPS.findAll(text).
 
 private val DIGIT_GROUPS_OF_A_UK_LANDLINE = digitGroupsOf("020 7946 0958")
 
+private const val FIRST_PRINTABLE_ASCII = 0x20
+
+private const val LAST_PRINTABLE_ASCII = 0x7E
+
+private val MARKS_OUTSIDE_ASCII_A_NUMBER_IS_WRITTEN_WITH =
+    listOf('\u3002', '\uFF61', '\u2022', '\u00A0', '\u2013', '\u2212', '\u2044', '\u30FB')
+
+private val MARKS_A_NUMBER_MAY_BE_WRITTEN_WITH =
+    ((FIRST_PRINTABLE_ASCII..LAST_PRINTABLE_ASCII).map { it.toChar() } + MARKS_OUTSIDE_ASCII_A_NUMBER_IS_WRITTEN_WITH)
+        .filterNot { it.isLetterOrDigit() }
+
+private fun groupedWith(mark: Char): String = "call me on 917${mark}555${mark}0199 about the leak"
+
+private fun spelledOneDigitTo(mark: Char): String =
+    "9175550199".toCharArray().joinToString(mark.toString()) + " is my cell, please ring about the radiator"
+
 class NumberShapeFilterTest {
+    @Test
+    fun `every arm that reads a separator between two digit groups reads the same marks as every other`() {
+        val disagreeing =
+            MARKS_A_NUMBER_MAY_BE_WRITTEN_WITH.filter { mark ->
+                val grouped = contactDetailsIn(groupedWith(mark)).isNotEmpty()
+                val spelled = contactDetailsIn(spelledOneDigitTo(mark)).isNotEmpty()
+                grouped != spelled
+            }
+        assertEquals(
+            emptyList(),
+            disagreeing,
+            "a mark is either something that can stand between two digits or it is not, and the answer has to " +
+                "be the same for every arm that reads one, stated once: a separator is any single character " +
+                "that is neither a letter nor a digit, and a run grouped entirely by the three marks the " +
+                "thousands arm reads is vetoed by its shape rather than by its punctuation. Deciding the " +
+                "question arm by arm is how two tables came to disagree eleven lines apart, so this test " +
+                "compares the arms against each other instead of naming what either holds. These marks are " +
+                "read by one arm and not the other: " +
+                disagreeing.joinToString(", ") { "U+%04X".format(it.code) },
+        )
+    }
+
+    @Test
+    fun `a cue further from the run than the window is not a cue, so the window is pinned from above too`() {
+        listOf(
+            "the flats on this floor are 1010 1020 1030 and the caretaker will ring you back later",
+            "the meter in the hall reads 1000 1500 2000 which the landlord asked me to check before you call",
+        ).forEach(::assertNothingFound)
+        assertPhoneNumber("the caretaker will ring you back on 1010 1020 1030 later")
+    }
+
+    @Test
+    fun `a cued run grouped like thousands is money however many digits it holds`() {
+        listOf(
+            "call me about the 1,250,000,000 lira bill",
+            "call me about the 123,456,789,012 lira bill",
+            "call me about the 1;250;000;000 lira bill",
+        ).forEach(::assertNothingFound)
+    }
     @Test
     fun `a separator is anything but a letter, a digit and the three marks the thousands arm owns`() {
         listOf(
