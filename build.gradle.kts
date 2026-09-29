@@ -19,6 +19,11 @@ kotlin {
 dependencies {
     implementation(platform(libs.spring.boot.dependencies))
     implementation(libs.spring.boot.starter.web)
+    implementation(libs.spring.boot.starter.jdbc)
+    implementation("org.springframework.boot:spring-boot-flyway")
+    implementation(libs.flyway.core)
+    implementation(libs.flyway.database.postgresql)
+    runtimeOnly(libs.postgresql)
     testImplementation(platform(libs.spring.boot.dependencies))
     testImplementation(kotlin("test"))
     testImplementation(libs.archunit.junit5)
@@ -35,10 +40,19 @@ sourceSets {
 
 configurations.getByName("integrationTestImplementation") {
     extendsFrom(configurations.testImplementation.get())
+    extendsFrom(configurations.implementation.get())
 }
 
 configurations.getByName("integrationTestRuntimeOnly") {
     extendsFrom(configurations.testRuntimeOnly.get())
+    extendsFrom(configurations.runtimeOnly.get())
+}
+
+dependencies {
+    "integrationTestImplementation"(platform(libs.testcontainers.bom))
+    "integrationTestImplementation"(libs.testcontainers.postgresql)
+    "integrationTestImplementation"(libs.testcontainers.junit.jupiter)
+    "integrationTestImplementation"("org.springframework.boot:spring-boot-testcontainers")
 }
 
 tasks.register<Test>("integrationTest") {
