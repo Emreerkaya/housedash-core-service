@@ -109,17 +109,18 @@ tasks.jacocoTestCoverageVerification {
 tasks.register("verifyIntegrationTestSourceSetNotEmpty") {
     group = "verification"
     val integrationSource = sourceSets["integrationTest"].allSource
+    val integrationSourceFiles = integrationSource.files
     inputs.files(integrationSource)
     outputs.file(layout.buildDirectory.file("reports/integration-source/verified.txt"))
     doLast {
-        if (integrationSource.isEmpty) {
+        if (integrationSourceFiles.isEmpty()) {
             throw GradleException(
                 "src/integrationTest has no source files; a NO-SOURCE integrationTest run must not pass as green",
             )
         }
         outputs.files.singleFile.apply {
             parentFile.mkdirs()
-            writeText("integrationTest source set holds ${integrationSource.files.size} files\n")
+            writeText("integrationTest source set holds ${integrationSourceFiles.size} files\n")
         }
     }
 }
