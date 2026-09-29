@@ -20,7 +20,7 @@ private val PHONE_CANDIDATE =
 
 private const val WHOLE_GROUP_OF_DIGITS = """(?<!\p{Nd})\p{Nd}{1,6}+(?!\p{Nd})"""
 
-private const val THOUSANDS_PUNCTUATION = """[,;:]\p{Zs}{0,2}+"""
+private val THOUSANDS_PUNCTUATION = """[${TablesTheGuardReads.PUNCTUATION_THE_THOUSANDS_ARM_OWNS}]\p{Zs}{0,2}+"""
 
 private const val MOST_PUNCTUATED_SEPARATORS = "{1,5}+"
 

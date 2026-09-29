@@ -15,8 +15,6 @@ sealed interface ContactDetail {
 }
 
 internal object TablesTheGuardReads {
-    val charactersACharacterClassEscapes = setOf('\\', '[', ']', '^', '&', '-')
-
     val confusablesFoldedToLatin =
         mapOf(
             '\u0430' to 'a',
@@ -105,24 +103,6 @@ internal object TablesTheGuardReads {
 
     val apostrophesABrandMayCarry = listOf('\'', '\u2019', '\u02BC', '\u055A')
 
-    val separatorsBetweenDigitGroups =
-        listOf(
-            '\t',
-            '.',
-            '_',
-            '/',
-            '\\',
-            '(',
-            ')',
-            '[',
-            ']',
-            '\u2212',
-            '\u00B7',
-            '\u2022',
-            '\u2027',
-            '\u30FB',
-        )
-
     val slashLike = slashesAHandleMayBeWrittenWith.joinToString("")
 
     val dotABrandMayBeWrittenWith = dotsABrandMayBeWrittenWith.joinToString("")
@@ -137,10 +117,9 @@ internal object TablesTheGuardReads {
         """what$betweenTheWordsOfABrand{0,2}+$apostropheOrNone""" +
             """s$betweenTheWordsOfABrand{0,2}+app"""
 
-    val phoneSeparator =
-        separatorsBetweenDigitGroups.joinToString("", """[\p{Zs}\p{Pd}""", "]") {
-            if (it in charactersACharacterClassEscapes) "\\" + it else it.toString()
-        }
+    const val PUNCTUATION_THE_THOUSANDS_ARM_OWNS = ",;:"
+
+    val phoneSeparator = """[^\p{L}\p{Nd}$PUNCTUATION_THE_THOUSANDS_ARM_OWNS]"""
 
     val waysOfAskingToBeRung =
         listOf(
@@ -355,6 +334,8 @@ private const val BRACKETED_AT =
     """$BRACKET_OPENING_A_WORDED_SEPARATOR""" +
         """at$BRACKET_CLOSING_A_WORDED_SEPARATOR"""
 
+private const val WORDED_AT = """(?:at|$BRACKETED_AT)"""
+
 private val DOT_A_DOMAIN_LABEL_MAY_BE_SEPARATED_BY =
     """[$DOT_A_BRAND_MAY_BE_WRITTEN_WITH\u3002]"""
 
@@ -363,6 +344,14 @@ private const val BRACKETED_DOT =
         """dot$BRACKET_CLOSING_A_WORDED_SEPARATOR\p{Zs}{0,3}+"""
 
 private const val WORDED_DOT_BETWEEN_DOMAIN_LABELS = """\p{Zs}{1,4}+dot\p{Zs}{1,4}+"""
+
+private const val WORDED_DOT =
+    """(?:dot|$BRACKET_OPENING_A_WORDED_SEPARATOR""" +
+        """dot$BRACKET_CLOSING_A_WORDED_SEPARATOR)"""
+
+private val LABEL_SEPARATOR_A_WORDED_AT_ALLOWS =
+    """(?:$BRACKETED_DOT|$WORDED_DOT_BETWEEN_DOMAIN_LABELS|""" +
+        """\p{Zs}{0,3}+$DOT_A_DOMAIN_LABEL_MAY_BE_SEPARATED_BY\p{Zs}{0,3}+)"""
 
 private val DOMAIN_LABEL_SEPARATOR =
     """(?:$BRACKETED_DOT|$WORDED_DOT_BETWEEN_DOMAIN_LABELS|""" +
@@ -395,14 +384,14 @@ private val DOMAIN_SPLIT_ONE_LETTER_TO_A_LABEL =
 
 private val WORDED_EMAIL =
     Regex(
-        """(?i)\b[A-Za-z0-9._%+\-]{1,64}+\p{Zs}{1,4}+(?:at|\(at\)|\[at\])\p{Zs}{1,4}+""" +
-            """[A-Za-z0-9\-]{1,63}+\p{Zs}{1,4}+(?:dot|\(dot\)|\[dot\])\p{Zs}{1,4}+$COMMON_TLD\b""",
+        """(?i)\b[A-Za-z0-9._%+\-]{1,64}+\p{Zs}{1,4}+$WORDED_AT\p{Zs}{1,4}+""" +
+            """[A-Za-z0-9\-]{1,63}+\p{Zs}{1,4}+$WORDED_DOT\p{Zs}{1,4}+$COMMON_TLD\b""",
     )
 
 private val WORDED_AT_BEFORE_A_MAIL_HOST =
     Regex(
-        """(?i)\b[A-Za-z0-9._%+\-]{1,64}+\p{Zs}{1,4}+at\p{Zs}{1,4}+$CONSUMER_MAIL_HOST""" +
-            """(?:\.|$BRACKETED_DOT)$COMMON_TLD\b""",
+        """(?i)\b[A-Za-z0-9._%+\-]{1,64}+\p{Zs}{1,4}+$WORDED_AT\p{Zs}{1,4}+$CONSUMER_MAIL_HOST""" +
+            """$LABEL_SEPARATOR_A_WORDED_AT_ALLOWS$COMMON_TLD\b""",
     )
 
 private val EMAIL_TOP_LEVEL_LABEL = Regex("""[A-Za-z]{2,24}""")

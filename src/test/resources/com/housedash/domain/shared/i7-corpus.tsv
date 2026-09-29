@@ -110,17 +110,17 @@ REJECT	ACCEPT		Kitchen tap drips from the base, reach me on 917x555x0199 this we
 QUESTION	REJECT	PaymentLink	I paid with apple pay last time and it went through fine	ordinary payment history, rejected as a PaymentLink; whether this is a false positive is an owner decision
 QUESTION	ACCEPT		I am at 350 E 62nd St #4B, buzzer 12, come by any evening	whether a street address is a contact detail under I7; the product gives the exact address after booking
 QUESTION	ACCEPT		I can pay you directly in cash outside the app if that is easier	not a contact detail, but an explicit offer to leave the platform; I7's wording covers the channel, not only the address
-REJECT	ACCEPT		Water pours through the ceiling on the landing, 917。555。0199 is my cell	U+3002 was added to the email label separator this round and not to PHONE_SEPARATOR, same file, same commit
-REJECT	ACCEPT		Water pours through the ceiling on the landing, 917｡555｡0199 is my cell	U+FF61 folds to U+3002, which PHONE_SEPARATOR does not list
+REJECT	REJECT	PhoneNumber	Water pours through the ceiling on the landing, 917。555。0199 is my cell	closed by asking what a separator is rather than listing them: anything that is neither a letter nor a digit nor one of the three marks the thousands arm owns
+REJECT	REJECT	PhoneNumber	Water pours through the ceiling on the landing, 917｡555｡0199 is my cell	closed by the same rule; U+FF61 folds to U+3002 under NFKD
 REJECT	ACCEPT		Water pours through the ceiling below, my cell is ❹❶❼ ❺❺❺ ❶❹❹	U+2776 dingbat digits: category So, no NFKD decomposition, not \p{Nd}, permitted by isPlainText
 REJECT	ACCEPT		Water pours through the ceiling below, my cell is ⓽⓵⓻ ⓹⓹⓹ ⓵⓽⓽	U+24F5 double-circled digits, same reason
 REJECT	ACCEPT		Water pours through the ceiling below, 020 7946 0958 is my landline	a UK landline; the uncued arm's dialable is exactly ten digits while PHONE_DIGIT_COUNT claims 9..15
 REJECT	REJECT	PhoneNumber	Water pours through the ceiling below, 07700 900 123 is my number	a UK mobile, eleven digits
 REJECT	REJECT	PhoneNumber	Water pours through the ceiling below, 1917 555 0199 is my cell	an eleven-digit domestic run with a country prefix and no plus
 REJECT	REJECT	PhoneNumber	Water pours through the ceiling below, 001 212 555 1234 is my cell	an international prefix written without a plus
-REJECT	ACCEPT		Water pours through the ceiling below, my cell is 917*555*0199	a separator PHONE_SEPARATOR does not list; ten more of the same shape pass
+REJECT	REJECT	PhoneNumber	Water pours through the ceiling below, my cell is 917*555*0199	closed by the separator rule, along with the ten other punctuation spellings the enumerated table did not list
 REJECT	ACCEPT		Water pours through the ceiling below, write to bob@mail,ru for the photos	the comma-for-a-dot arm is restricted to a common-TLD list, and the list is unmeasured
-REJECT	ACCEPT		Water pours through the ceiling below, write to bobby at yahoo·com about it	the worded-at arm kept the narrow dot vocabulary the domain arm just widened
+REJECT	REJECT	EmailAddress	Water pours through the ceiling below, write to bobby at yahoo·com about it	closed by giving the worded-at arm the dot vocabulary the domain arm already had
 ACCEPT	REJECT	PhoneNumber	boiler serial 1 234 567 890 is on the plate behind the panel	space is the SI thousands separator; the bare form is accepted and pinned, this one is not
 ACCEPT	REJECT	PhoneNumber	We counted 8 200 300 400 mm lengths of skirting in the hall here	a size list with a count in front; the same list without the count is accepted
 ACCEPT	REJECT	PhoneNumber	the quote came to 1 250 000 000 lira for the whole block here	a large sum written with SI separators
