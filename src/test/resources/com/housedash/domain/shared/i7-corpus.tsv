@@ -38,13 +38,13 @@ REJECT	ACCEPT	(917) 555 01 99	a chosen gap, but dialable
 REJECT	ACCEPT	9175 5501 99	a chosen gap, but dialable
 REJECT	ACCEPT	917\n555\n01\n99	a chosen gap, but dialable
 REJECT	ACCEPT	917-555-01-99	a chosen gap, but dialable
-REJECT	ACCEPT	Revolut	a payment brand the list does not hold; D176
-REJECT	ACCEPT	Wise	a payment brand the list does not hold; D176
-REJECT	ACCEPT	Chime	a payment brand the list does not hold; D176
-REJECT	ACCEPT	Strike or Wero	a payment brand the list does not hold; D176
-REJECT	ACCEPT	PayID	a payment brand the list does not hold; D176
-REJECT	ACCEPT	Interac e-Transfer	a payment brand the list does not hold; D176
-REJECT	ACCEPT	venmօ	U+0585 Armenian; the confusable table covers Cyrillic and Greek only
+REJECT	REJECT	Revolut	closed by the brand list; D176 applies and the list states its gaps
+REJECT	ACCEPT	Wise	an ordinary English word as well as a brand; held only with its own host
+REJECT	ACCEPT	Chime	an ordinary English word as well as a brand; held only with its own host
+REJECT	REJECT	Strike or Wero	closed by the brand list; Wise and Chime stay out, an ordinary word each
+REJECT	REJECT	PayID	closed by the brand list; D176 applies and the list states its gaps
+REJECT	REJECT	Interac e-Transfer	closed by the brand list; D176 applies and the list states its gaps
+REJECT	REJECT	venmօ	U+0585 Armenian; closed by widening the confusable table to Armenian
 REJECT	ACCEPT	my bank is 31-27-00 12345678	a UK sort code and account, without the word sort
 REJECT	ACCEPT	wire it to 021000021 and 1234567890	a US routing and account number, no brand word
 ACCEPT	ACCEPT	boiler serviced 2019 2021 2023	closed by the three-digit rule

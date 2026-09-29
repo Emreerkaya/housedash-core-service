@@ -146,12 +146,61 @@ class ContactFilterTest {
     }
 
     @Test
-    fun `finds a payment service spelled with a cyrillic or greek lookalike`() {
+    fun `the payment brand arm is a list, and these are brands it does not hold`() {
+        listOf(
+            "Payconiq",
+            "Bizum",
+            "Swish",
+            "Vipps",
+            "Blik",
+            "MobilePay",
+            "Pix",
+            "Paytm",
+            "GrabPay",
+            "Twint",
+        ).forEach(::assertNothingFound)
+    }
+
+    @Test
+    fun `a brand whose name is an ordinary word is held only with its own host`() {
+        listOf(
+            "the door chime does not work when the button is pressed",
+            "it would be wise to replace the whole valve while you are here",
+            "the strike plate on the front door is bent out of shape",
+            "we need to transfer the meter reading to the new tenant",
+        ).forEach(::assertNothingFound)
+        listOf(
+            "chime.com/bob",
+            "strike.me/bob",
+            "wise.com/pay",
+        ).forEach { text ->
+            assertTrue(ContactDetail.PaymentLink in contactDetailsIn(text), text)
+        }
+        assertNothingFound("Wise")
+        assertNothingFound("Chime")
+    }
+
+    @Test
+    fun `bank coordinates written without a word naming them are not found`() {
+        assertNothingFound("my bank is 31-27-00 12345678")
+        assertNothingFound("wire it to 021000021 and 1234567890")
+    }
+
+    @Test
+    fun `the confusable table covers three alphabets, and these fold under none of them`() {
+        assertNothingFound("venm\u2C9F me instead")
+        assertNothingFound("v\u1D07nmo me instead")
+    }
+
+    @Test
+    fun `finds a payment service spelled with a cyrillic, greek or armenian lookalike`() {
         listOf(
             "c\u0430sh.app",
             "cash\u2044app",
             "v\u0435nmo me instead",
             "\u03C1aypal.me/bob",
+            "venm\u0585 me instead",
+            "ve\u0578mo me instead",
         ).forEach { text ->
             assertTrue(ContactDetail.PaymentLink in contactDetailsIn(text), text)
         }
