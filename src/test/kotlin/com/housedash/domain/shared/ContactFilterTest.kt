@@ -311,10 +311,102 @@ class ContactFilterTest {
     }
 
     @Test
-    fun `a comma or a colon separates the groups of a phone number`() {
-        assertPhoneNumber("917,555,0199 is best")
-        assertPhoneNumber("917;555;0199 is best")
-        assertPhoneNumber("917:555:0199 is best")
+    fun `a comma or a colon separates the groups of a phone number, and this arm needs a cue`() {
+        assertPhoneNumber("call me on 917,555,0199")
+        assertPhoneNumber("text me on 917;555;0199")
+        assertPhoneNumber("my number is 917:555:0199")
+        assertNothingFound("917,555,0199 is best")
+    }
+
+    @Test
+    fun `a comma separated list of ordinary numbers is not a phone number`() {
+        assertNothingFound("boiler serviced 2019, 2021, 2023 and now it leaks")
+        assertNothingFound("the quotes were 1200, 450, 600 from three firms")
+        assertNothingFound("the runs are 1500, 900, 750 mm end to end here")
+    }
+
+    @Test
+    fun `a line break separates the parts of a signal exactly as a space does`() {
+        assertPhoneNumber("917\n555\n0199 is best")
+        assertPhoneNumber("+44\n7700\n900123")
+        listOf("bob\n@\nexample.com", "bob at\nexample dot\ncom").forEach { text ->
+            assertEquals(setOf(ContactDetail.EmailAddress), contactDetailsIn(text), text)
+        }
+        assertEquals(setOf(ContactDetail.MessagingHandle), contactDetailsIn("t.me\n/bobplumber"))
+    }
+
+    @Test
+    fun `padding a phone number with extra single digit groups does not hide it`() {
+        assertPhoneNumber("917-555-0199-0-0-0-0-0-0")
+        assertPhoneNumber("917-555-0199 (1) (2) (3)")
+        assertPhoneNumber("(1) (2) (3) 917-555-0199")
+        assertNothingFound("the part number is 0141-445-2266-01 on the label")
+        assertNothingFound("replace washers 1 2 3 4 5 6 7 8 9 10 in that order")
+    }
+
+    @Test
+    fun `a candidate the padding rule trims is still measured against every phone rule`() {
+        assertPhoneNumber("+917-555-0199-0-0-0-0-0-0")
+        assertPhoneNumber("+1-2-3-917-555-0199-0-0-0")
+        assertNothingFound("the plate reads 1 1234567 1234567 1234567 1 on the side")
+        assertNothingFound("the rads are 1 22 33 44 55 66 77 8 across the run")
+    }
+
+    @Test
+    fun `a cued run grouped like thousands is money and not a phone number`() {
+        assertNothingFound("call me about the 123,456,789 lira bill")
+        assertNothingFound("call me about the 1,250,000 lira bill")
+        assertPhoneNumber("call me on 917,555,0199")
+    }
+
+    @Test
+    fun `three groups of digits are a phone number even when they are years or millimetres`() {
+        assertPhoneNumber("boiler serviced 2019 2021 2023 and now it leaks")
+        assertPhoneNumber("the radiators are 1400 1600 1800 mm along that wall")
+    }
+
+    @Test
+    fun `apple pay and google pay are found however their two words are joined`() {
+        listOf(
+            "apple-pay me",
+            "google-pay me",
+            "apple pay me",
+            "applepay me",
+            "apple  pay me",
+            "apple.pay me",
+            "western-union me",
+            "pay-pal me",
+        ).forEach { text ->
+            assertEquals(setOf(ContactDetail.PaymentLink), contactDetailsIn(text), text)
+        }
+    }
+
+    @Test
+    fun `whats app is found however the brand is spelled`() {
+        listOf(
+            "what's app me instead",
+            "what\u2019s app me instead",
+            "whats app me instead",
+            "whatsapp me instead",
+            "what-s-app me instead",
+        ).forEach { text ->
+            assertTrue(contactDetailsIn(text).isNotEmpty(), text)
+        }
+        assertNothingFound("what's appropriate for this boiler is not clear")
+        assertNothingFound("what is apparent here is nothing at all")
+    }
+
+    @Test
+    fun `a middle dot or a bullet joins a brand exactly as a full stop does`() {
+        listOf(
+            "pay me at cash\u00B7app/bob",
+            "t\u00B7me/bobplumber",
+            "x\u2022com/bobplumber",
+            "wise\u2027com is where to send it",
+            "instagram\u30FBcom/bobplumber",
+        ).forEach { text ->
+            assertTrue(contactDetailsIn(text).isNotEmpty(), text)
+        }
     }
 
     @Test
@@ -356,7 +448,8 @@ class ContactFilterTest {
     fun `thousands separators are money and not a phone number`() {
         assertNothingFound("the run cost 123,456,789 lira all in")
         assertNothingFound("the invoice total was 1,250.00 and 1,234 parts")
-        assertPhoneNumber("1234,567,890 is best")
+        assertNothingFound("1234,567,890 is best")
+        assertPhoneNumber("call 1234,567,890 now")
     }
 
     @Test
@@ -494,7 +587,7 @@ class ContactFilterTest {
     }
 
     @Test
-    fun `the forms this filter deliberately does not match`() {
+    fun `the forms this filter does not match are the gaps someone chose, not the gaps that exist`() {
         listOf(
             "nine one seven five five five zero one nine nine",
             "ring 917 five five five 0199",
@@ -505,6 +598,18 @@ class ContactFilterTest {
             "the pipe run is 917\u2044555\u20440199 mm of copper",
             "c-a-s-h-a-p-p me instead",
             "the plate reads 9175550199 and nothing else",
+            "pay me at cash=app instead of the platform",
+            "pay me at cash|app instead of the platform",
+            "cash . app slash bob is where to send it",
+            "wh4ts4pp me instead of using this",
+            "telegram me when you are free",
+            "signal me when you are free",
+            "find me on nextdoor, the name is bob",
+            "my insta is bobplumber if you want it",
+            "reach me at bit.ly/bobplumber for the quote",
+            "917 then 555 then 0199 is the number",
+            "bob at example dot see oh em",
+            "scan the qr code on my van",
         ).forEach(::assertNothingFound)
     }
 
