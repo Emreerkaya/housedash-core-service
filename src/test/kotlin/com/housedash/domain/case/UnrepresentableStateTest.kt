@@ -82,13 +82,19 @@ class UnrepresentableStateTest {
     }
 
     @Test
-    fun `the raw constructor of every case variant is private`() {
-        variants.forEach { variant ->
-            val declared = variant.declaredConstructors
-            assertEquals(2, declared.size, variant.name)
+    fun `the raw constructor of every closed domain type is private and its bridge is synthetic`() {
+        CLOSED_CONSTRUCTION.forEach { type ->
+            val declared = type.declaredConstructors
+            assertEquals(2, declared.size, type.name)
             val raw = declared.single { Modifier.isPrivate(it.modifiers) }
             val reachable = declared.single { Modifier.isPublic(it.modifiers) }
-            assertEquals(raw.parameterCount + 1, reachable.parameterCount, variant.name)
+            assertEquals(raw.parameterCount + 1, reachable.parameterCount, type.name)
+            assertTrue(
+                reachable.isSynthetic,
+                "${type.name} has a reachable constructor that the compiler did not write; internal compiles " +
+                    "to a plain public constructor with no synthetic flag, and that is how a type leaves the " +
+                    "guarded set without anything naming it",
+            )
         }
     }
 
@@ -249,5 +255,15 @@ class UnrepresentableStateTest {
     private companion object {
         const val PHOTO_ARGUMENT = 4
         const val PARAMETERS_WITH_MARKER = 7
+
+        val CLOSED_CONSTRUCTION =
+            listOf(
+                DraftCase::class.java,
+                DescribedCase::class.java,
+                Description::class.java,
+                CasePhotos::class.java,
+                CaseId::class.java,
+                PhotoId::class.java,
+            )
     }
 }
