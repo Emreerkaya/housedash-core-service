@@ -14,102 +14,329 @@ sealed interface ContactDetail {
     data object MessagingHandle : ContactDetail
 }
 
-private val CONFUSABLES_FOLDED_TO_LATIN =
-    mapOf(
-        '\u0430' to 'a',
-        '\u0432' to 'b',
-        '\u0435' to 'e',
-        '\u043A' to 'k',
-        '\u043C' to 'm',
-        '\u043D' to 'n',
-        '\u043E' to 'o',
-        '\u0440' to 'p',
-        '\u0441' to 'c',
-        '\u0442' to 't',
-        '\u0443' to 'y',
-        '\u0445' to 'x',
-        '\u0455' to 's',
-        '\u0456' to 'i',
-        '\u0458' to 'j',
-        '\u04BB' to 'h',
-        '\u04CF' to 'l',
-        '\u0501' to 'd',
-        '\u051B' to 'q',
-        '\u051D' to 'w',
-        '\u0410' to 'A',
-        '\u0412' to 'B',
-        '\u0415' to 'E',
-        '\u041A' to 'K',
-        '\u041C' to 'M',
-        '\u041D' to 'H',
-        '\u041E' to 'O',
-        '\u0420' to 'P',
-        '\u0421' to 'C',
-        '\u0422' to 'T',
-        '\u0425' to 'X',
-        '\u0405' to 'S',
-        '\u0406' to 'I',
-        '\u0408' to 'J',
-        '\u03B1' to 'a',
-        '\u03B3' to 'y',
-        '\u03B5' to 'e',
-        '\u03B9' to 'i',
-        '\u03BA' to 'k',
-        '\u03BC' to 'u',
-        '\u03BD' to 'v',
-        '\u03BF' to 'o',
-        '\u03C1' to 'p',
-        '\u03C4' to 't',
-        '\u03C5' to 'u',
-        '\u03C7' to 'x',
-        '\u0391' to 'A',
-        '\u0392' to 'B',
-        '\u0395' to 'E',
-        '\u0397' to 'H',
-        '\u0399' to 'I',
-        '\u039A' to 'K',
-        '\u039C' to 'M',
-        '\u039D' to 'N',
-        '\u039F' to 'O',
-        '\u03A1' to 'P',
-        '\u03A4' to 'T',
-        '\u03A5' to 'Y',
-        '\u03A7' to 'X',
-        '\u0131' to 'i',
-        '\u0251' to 'a',
-        '\u0585' to 'o',
-        '\u0578' to 'n',
-        '\u057D' to 'u',
-        '\u0570' to 'h',
-        '\u056C' to 'l',
-        '\u0566' to 'q',
+internal object TablesTheGuardReads {
+    val charactersACharacterClassEscapes = setOf('\\', '[', ']', '^', '&', '-')
+
+    val confusablesFoldedToLatin =
+        mapOf(
+            '\u0430' to 'a',
+            '\u0432' to 'b',
+            '\u0435' to 'e',
+            '\u043A' to 'k',
+            '\u043C' to 'm',
+            '\u043D' to 'n',
+            '\u043E' to 'o',
+            '\u0440' to 'p',
+            '\u0441' to 'c',
+            '\u0442' to 't',
+            '\u0443' to 'y',
+            '\u0445' to 'x',
+            '\u0455' to 's',
+            '\u0456' to 'i',
+            '\u0458' to 'j',
+            '\u04BB' to 'h',
+            '\u04CF' to 'l',
+            '\u0501' to 'd',
+            '\u051B' to 'q',
+            '\u051D' to 'w',
+            '\u0410' to 'A',
+            '\u0412' to 'B',
+            '\u0415' to 'E',
+            '\u041A' to 'K',
+            '\u041C' to 'M',
+            '\u041D' to 'H',
+            '\u041E' to 'O',
+            '\u0420' to 'P',
+            '\u0421' to 'C',
+            '\u0422' to 'T',
+            '\u0425' to 'X',
+            '\u0405' to 'S',
+            '\u0406' to 'I',
+            '\u0408' to 'J',
+            '\u03B1' to 'a',
+            '\u03B3' to 'y',
+            '\u03B5' to 'e',
+            '\u03B9' to 'i',
+            '\u03BA' to 'k',
+            '\u03BC' to 'u',
+            '\u03BD' to 'v',
+            '\u03BF' to 'o',
+            '\u03C1' to 'p',
+            '\u03C4' to 't',
+            '\u03C5' to 'u',
+            '\u03C7' to 'x',
+            '\u0391' to 'A',
+            '\u0392' to 'B',
+            '\u0395' to 'E',
+            '\u0397' to 'H',
+            '\u0399' to 'I',
+            '\u039A' to 'K',
+            '\u039C' to 'M',
+            '\u039D' to 'N',
+            '\u039F' to 'O',
+            '\u03A1' to 'P',
+            '\u03A4' to 'T',
+            '\u03A5' to 'Y',
+            '\u03A7' to 'X',
+            '\u0131' to 'i',
+            '\u0251' to 'a',
+            '\u0585' to 'o',
+            '\u0578' to 'n',
+            '\u057D' to 'u',
+            '\u0570' to 'h',
+            '\u056C' to 'l',
+            '\u0566' to 'q',
+        )
+
+    val lineBreaksADescriptionBoxCreates =
+        setOf('\n', '\r', '\t', '\u000B', '\u000C', '\u0085', '\u2028', '\u2029')
+
+    val categoriesStrippedBeforeMatching =
+        setOf(
+            CharCategory.FORMAT,
+            CharCategory.NON_SPACING_MARK,
+            CharCategory.COMBINING_SPACING_MARK,
+            CharCategory.ENCLOSING_MARK,
+        )
+
+    val slashesAHandleMayBeWrittenWith = listOf('/', '\u2044', '\u2215', '\u29F8')
+
+    val dotsABrandMayBeWrittenWith = listOf('.', '\u00B7', '\u2022', '\u2027', '\u30FB')
+
+    val apostrophesABrandMayCarry = listOf('\'', '\u2019', '\u02BC', '\u055A')
+
+    val separatorsBetweenDigitGroups =
+        listOf(
+            '\t',
+            '.',
+            '_',
+            '/',
+            '\\',
+            '(',
+            ')',
+            '[',
+            ']',
+            '\u2212',
+            '\u00B7',
+            '\u2022',
+            '\u2027',
+            '\u30FB',
+        )
+
+    val slashLike = slashesAHandleMayBeWrittenWith.joinToString("")
+
+    val dotABrandMayBeWrittenWith = dotsABrandMayBeWrittenWith.joinToString("")
+
+    val dotInABrand = "[$dotABrandMayBeWrittenWith]"
+
+    val betweenTheWordsOfABrand = """[$dotABrandMayBeWrittenWith\-_$slashLike\p{Zs}]"""
+
+    val apostropheOrNone = apostrophesABrandMayCarry.joinToString("", "[", "]?+")
+
+    val whatsapp =
+        """what$betweenTheWordsOfABrand{0,2}+$apostropheOrNone""" +
+            """s$betweenTheWordsOfABrand{0,2}+app"""
+
+    val phoneSeparator =
+        separatorsBetweenDigitGroups.joinToString("", """[\p{Zs}\p{Pd}""", "]") {
+            if (it in charactersACharacterClassEscapes) "\\" + it else it.toString()
+        }
+
+    val waysOfAskingToBeRung =
+        listOf(
+            "call",
+            "calls",
+            "called",
+            "calling",
+            "text",
+            "texts",
+            "texted",
+            "ring",
+            "rings",
+            "dial",
+            "dials",
+            "phone",
+            "phones",
+            "telephone",
+            "tel",
+            "mobile",
+            "cell",
+            "cellphone",
+            whatsapp,
+            "sms",
+        )
+
+    val namesANumberAsSomethingElse =
+        listOf(
+            "serial",
+            "serials",
+            "model",
+            "imei",
+            "part",
+            "parts",
+            "sku",
+            "meter",
+            "reading",
+            "invoice",
+            "order",
+            "ref",
+            "reference",
+            "barcode",
+            "licence",
+            "license",
+            "policy",
+            "warranty",
+            "asset",
+            "batch",
+            "code",
+            "account",
+            "acct",
+            "lot",
+            "unit",
+            "catalogue",
+            "catalog",
+            "job",
+            "door",
+            "flat",
+            "buzzer",
+            "apartment",
+            "room",
+            "version",
+            "build",
+        )
+
+    val topLevelLabels =
+        listOf(
+            "com",
+            "net",
+            "org",
+            "edu",
+            "gov",
+            "io",
+            "co",
+            "me",
+            "uk",
+            "us",
+            "ca",
+            "de",
+            "fr",
+            "nl",
+            "es",
+            "it",
+            "ie",
+            "au",
+            "info",
+            "mail",
+            "email",
+            "app",
+            "dev",
+        )
+
+    val consumerMailHosts =
+        listOf(
+            "gmail",
+            "googlemail",
+            "hotmail",
+            "outlook",
+            "live",
+            "msn",
+            "yahoo",
+            "ymail",
+            "aol",
+            "icloud",
+            "proton",
+            "protonmail",
+            "gmx",
+            "zoho",
+            "yandex",
+            "fastmail",
+            "tutanota",
+            "qq",
+        )
+
+    val paymentServices =
+        listOf(
+            """cash$betweenTheWordsOfABrand{0,2}+(?:app|me)""",
+            "venmo",
+            "revolut",
+            "wero",
+            "payid",
+            """strike${dotInABrand}me""",
+            """chime${dotInABrand}com""",
+            """interac$betweenTheWordsOfABrand{0,2}+e$betweenTheWordsOfABrand{0,2}+transfer""",
+            """pay$betweenTheWordsOfABrand{0,2}+pal""",
+            "zelle",
+            """wise${dotInABrand}com""",
+            """square${dotInABrand}link""",
+            """monzo${dotInABrand}me""",
+            """apple$betweenTheWordsOfABrand{0,2}+pay""",
+            """google$betweenTheWordsOfABrand{0,2}+pay""",
+            """(?:buy$dotInABrand|checkout$dotInABrand)?+stripe${dotInABrand}com""",
+            """ko-?+fi${dotInABrand}com""",
+            """gofundme${dotInABrand}com""",
+            """patreon${dotInABrand}com""",
+            """western$betweenTheWordsOfABrand{0,2}+union""",
+            "moneygram",
+            "payoneer",
+            "skrill",
+            "bitcoin",
+            "ethereum",
+            "monero",
+        )
+
+    val messagingApps = listOf(whatsapp, "viber", "wechat", "kakaotalk")
+
+    val messagingHosts =
+        listOf(
+            """t${dotInABrand}me""",
+            """telegram${dotInABrand}me""",
+            """wa${dotInABrand}me""",
+            """m${dotInABrand}me""",
+            """api${dotInABrand}whatsapp${dotInABrand}com""",
+            """instagram${dotInABrand}com""",
+            """ig${dotInABrand}me""",
+            """facebook${dotInABrand}com""",
+            """fb${dotInABrand}me""",
+            """snapchat${dotInABrand}com""",
+            """tiktok${dotInABrand}com""",
+            """x${dotInABrand}com""",
+            """twitter${dotInABrand}com""",
+            """nextdoor${dotInABrand}com""",
+            """signal${dotInABrand}me""",
+            """discord${dotInABrand}gg""",
+            """linkedin${dotInABrand}com/in""",
+        )
+}
+
+private val CONFUSABLES_FOLDED_TO_LATIN = TablesTheGuardReads.confusablesFoldedToLatin
+
+private val LINE_BREAKS_A_DESCRIPTION_BOX_CREATES = TablesTheGuardReads.lineBreaksADescriptionBoxCreates
+
+private val CATEGORIES_STRIPPED_BEFORE_MATCHING = TablesTheGuardReads.categoriesStrippedBeforeMatching
+
+private val DOT_A_BRAND_MAY_BE_WRITTEN_WITH = TablesTheGuardReads.dotABrandMayBeWrittenWith
+
+private val PHONE_SEPARATOR = TablesTheGuardReads.phoneSeparator
+
+private val PHONE_CUE =
+    Regex("""(?i)\b(?:${TablesTheGuardReads.waysOfAskingToBeRung.joinToString("|")})\b""")
+
+private val NAMES_A_NUMBER_AS_SOMETHING_ELSE =
+    "(?:" + TablesTheGuardReads.namesANumberAsSomethingElse.joinToString("|") + ")"
+
+private val COMMON_TLD = "(?:" + TablesTheGuardReads.topLevelLabels.joinToString("|") + ")"
+
+private val CONSUMER_MAIL_HOST = "(?:" + TablesTheGuardReads.consumerMailHosts.joinToString("|") + ")"
+
+private val PAYMENT_SERVICE =
+    Regex("""(?i)\b(?:${TablesTheGuardReads.paymentServices.joinToString("|")})\b""")
+
+private val MESSAGING_HANDLE =
+    Regex(
+        """(?i)(?:\b(?:${TablesTheGuardReads.messagingApps.joinToString("|")})\b|""" +
+            """\b(?:${TablesTheGuardReads.messagingHosts.joinToString("|")})""" +
+            """\p{Zs}{0,2}+[${TablesTheGuardReads.slashLike}]\p{Zs}{0,2}+[A-Za-z0-9._~%+\-]{2,40}+)""",
     )
-
-private val LINE_BREAKS_A_DESCRIPTION_BOX_CREATES =
-    setOf('\n', '\r', '\t', '\u000B', '\u000C', '\u0085', '\u2028', '\u2029')
-
-private val CATEGORIES_STRIPPED_BEFORE_MATCHING =
-    setOf(
-        CharCategory.FORMAT,
-        CharCategory.NON_SPACING_MARK,
-        CharCategory.COMBINING_SPACING_MARK,
-        CharCategory.ENCLOSING_MARK,
-    )
-
-private const val SLASH_LIKE = """/\u2044\u2215\u29F8"""
-
-private const val DOT_A_BRAND_MAY_BE_WRITTEN_WITH = """.\u00B7\u2022\u2027\u30FB"""
-
-private const val DOT_IN_A_BRAND = """[$DOT_A_BRAND_MAY_BE_WRITTEN_WITH]"""
-
-private const val BETWEEN_THE_WORDS_OF_A_BRAND =
-    """[$DOT_A_BRAND_MAY_BE_WRITTEN_WITH\-_$SLASH_LIKE\p{Zs}]"""
-
-private const val APOSTROPHE_OR_NONE = """['\u2019\u02BC\u055A]?+"""
-
-private const val WHATSAPP =
-    """what$BETWEEN_THE_WORDS_OF_A_BRAND{0,2}+$APOSTROPHE_OR_NONE""" +
-        """s$BETWEEN_THE_WORDS_OF_A_BRAND{0,2}+app"""
 
 private const val PUNCTUATION_A_SPACED_OUT_RUN_KEEPS = """[.@/\-_]"""
 
@@ -127,8 +354,6 @@ private val SPACED_OUT_RUN =
             """(?:$BETWEEN_TWO_SPACED_OUT_CHARACTERS$SINGLE_CHARACTER_TOKEN)""" +
             FEWEST_FURTHER_CHARACTERS_IN_A_SPACED_OUT_RUN,
     )
-
-private const val PHONE_SEPARATOR = """[\p{Zs}\t\p{Pd}\u2212\u00B7\u2022\u2027\u30FB._/\\()\[\]]"""
 
 private const val LONGEST_SEPARATOR_BETWEEN_GROUPS = "{0,8}+"
 
@@ -156,22 +381,8 @@ private val DIGIT_GROUP = Regex("""\p{Nd}++""")
 
 private val SEPARATOR_A_SPREAD_OUT_NUMBER_USES = Regex("""[\p{Zs}\p{Pd}\u2212]""")
 
-private val PHONE_CUE =
-    Regex(
-        """(?i)\b(?:call|calls|called|calling|text|texts|texted|ring|rings|dial|dials|""" +
-            """phone|phones|telephone|tel|mobile|cell|cellphone|$WHATSAPP|sms)\b""",
-    )
-
-private const val NAMES_A_NUMBER_AS_SOMETHING_ELSE =
-    """(?:serial|serials|model|imei|part|parts|sku|meter|reading|invoice|order|ref|reference|""" +
-        """barcode|licence|license|policy|warranty|asset|batch|code|account|acct|lot|unit|""" +
-        """catalogue|catalog|job|door|flat|buzzer|apartment|room|version|build)"""
-
 private val UNQUALIFIED_NUMBER_CUE =
     Regex("""(?i)(?<!\b$NAMES_A_NUMBER_AS_SOMETHING_ELSE\p{Zs}{0,4})\bnumbers?\b""")
-
-private const val COMMON_TLD =
-    """(?:com|net|org|edu|gov|io|co|me|uk|us|ca|de|fr|nl|es|it|ie|au|info|mail|email|app|dev)"""
 
 private const val BRACKET_OPENING_A_WORDED_SEPARATOR = """[(\[{<]"""
 
@@ -181,7 +392,7 @@ private const val BRACKETED_AT =
     """$BRACKET_OPENING_A_WORDED_SEPARATOR""" +
         """at$BRACKET_CLOSING_A_WORDED_SEPARATOR"""
 
-private const val DOT_A_DOMAIN_LABEL_MAY_BE_SEPARATED_BY =
+private val DOT_A_DOMAIN_LABEL_MAY_BE_SEPARATED_BY =
     """[$DOT_A_BRAND_MAY_BE_WRITTEN_WITH\u3002]"""
 
 private const val BRACKETED_DOT =
@@ -190,7 +401,7 @@ private const val BRACKETED_DOT =
 
 private const val WORDED_DOT_BETWEEN_DOMAIN_LABELS = """\p{Zs}{1,4}+dot\p{Zs}{1,4}+"""
 
-private const val DOMAIN_LABEL_SEPARATOR =
+private val DOMAIN_LABEL_SEPARATOR =
     """(?:$BRACKETED_DOT|$WORDED_DOT_BETWEEN_DOMAIN_LABELS|""" +
         """\p{Zs}{0,3}+$DOT_A_DOMAIN_LABEL_MAY_BE_SEPARATED_BY\p{Zs}{0,3}+)"""
 
@@ -198,7 +409,7 @@ private const val DOMAIN_LABEL = """[A-Za-z0-9\-]{1,63}+"""
 
 private const val MOST_SPACES_AROUND_AN_AT_SIGN = "{0,3}+"
 
-private const val COMMA_BEFORE_A_TOP_LEVEL_LABEL = """,\p{Zs}{0,3}+$COMMON_TLD(?![A-Za-z0-9])"""
+private val COMMA_BEFORE_A_TOP_LEVEL_LABEL = """,\p{Zs}{0,3}+$COMMON_TLD(?![A-Za-z0-9])"""
 
 private val EMAIL_CANDIDATE =
     Regex(
@@ -225,10 +436,6 @@ private val WORDED_EMAIL =
             """[A-Za-z0-9\-]{1,63}+\p{Zs}{1,4}+(?:dot|\(dot\)|\[dot\])\p{Zs}{1,4}+$COMMON_TLD\b""",
     )
 
-private const val CONSUMER_MAIL_HOST =
-    """(?:gmail|googlemail|hotmail|outlook|live|msn|yahoo|ymail|aol|icloud|proton|protonmail|""" +
-        """gmx|zoho|yandex|fastmail|tutanota|qq)"""
-
 private val WORDED_AT_BEFORE_A_MAIL_HOST =
     Regex(
         """(?i)\b[A-Za-z0-9._%+\-]{1,64}+\p{Zs}{1,4}+at\p{Zs}{1,4}+$CONSUMER_MAIL_HOST""" +
@@ -236,20 +443,6 @@ private val WORDED_AT_BEFORE_A_MAIL_HOST =
     )
 
 private val EMAIL_TOP_LEVEL_LABEL = Regex("""[A-Za-z]{2,24}""")
-
-private val PAYMENT_SERVICE =
-    Regex(
-        """(?i)\b(?:cash$BETWEEN_THE_WORDS_OF_A_BRAND{0,2}+(?:app|me)|venmo|""" +
-            """revolut|wero|payid|strike${DOT_IN_A_BRAND}me|chime${DOT_IN_A_BRAND}com|""" +
-            """interac$BETWEEN_THE_WORDS_OF_A_BRAND{0,2}+e$BETWEEN_THE_WORDS_OF_A_BRAND{0,2}+transfer|""" +
-            """pay$BETWEEN_THE_WORDS_OF_A_BRAND{0,2}+pal|zelle|wise${DOT_IN_A_BRAND}com|""" +
-            """revolut${DOT_IN_A_BRAND}me|square${DOT_IN_A_BRAND}link|monzo${DOT_IN_A_BRAND}me|""" +
-            """apple$BETWEEN_THE_WORDS_OF_A_BRAND{0,2}+pay|google$BETWEEN_THE_WORDS_OF_A_BRAND{0,2}+pay|""" +
-            """(?:buy$DOT_IN_A_BRAND|checkout$DOT_IN_A_BRAND)?+stripe${DOT_IN_A_BRAND}com|""" +
-            """ko-?+fi${DOT_IN_A_BRAND}com|gofundme${DOT_IN_A_BRAND}com|patreon${DOT_IN_A_BRAND}com|""" +
-            """western$BETWEEN_THE_WORDS_OF_A_BRAND{0,2}+union|moneygram|payoneer|skrill|""" +
-            """bitcoin|ethereum|monero)\b""",
-    )
 
 private val CASH_TAG = Regex("""(?<![A-Za-z0-9])\$[A-Za-z][A-Za-z0-9_]{1,30}+""")
 
@@ -269,18 +462,6 @@ private val IBAN_CANDIDATE =
     Regex(
         """\b[A-Za-z]{2}[0-9]{2}(?:[A-Za-z0-9]{11,30}+|""" +
             """(?:[\p{Zs}\p{Pd}][A-Za-z0-9]{4}){2,7}+(?:[\p{Zs}\p{Pd}][A-Za-z0-9]{1,3})?+)""",
-    )
-
-private val MESSAGING_HANDLE =
-    Regex(
-        """(?i)(?:\b(?:$WHATSAPP|viber|wechat|kakaotalk)\b|""" +
-            """\b(?:t${DOT_IN_A_BRAND}me|telegram${DOT_IN_A_BRAND}me|wa${DOT_IN_A_BRAND}me|""" +
-            """m${DOT_IN_A_BRAND}me|api${DOT_IN_A_BRAND}whatsapp${DOT_IN_A_BRAND}com|""" +
-            """instagram${DOT_IN_A_BRAND}com|ig${DOT_IN_A_BRAND}me|facebook${DOT_IN_A_BRAND}com|""" +
-            """fb${DOT_IN_A_BRAND}me|snapchat${DOT_IN_A_BRAND}com|tiktok${DOT_IN_A_BRAND}com|""" +
-            """x${DOT_IN_A_BRAND}com|twitter${DOT_IN_A_BRAND}com|nextdoor${DOT_IN_A_BRAND}com|""" +
-            """signal${DOT_IN_A_BRAND}me|discord${DOT_IN_A_BRAND}gg|linkedin${DOT_IN_A_BRAND}com/in)""" +
-            """\p{Zs}{0,2}+[$SLASH_LIKE]\p{Zs}{0,2}+[A-Za-z0-9._~%+\-]{2,40}+)""",
     )
 
 private val PAYMENT_PATTERNS = listOf(PAYMENT_SERVICE, CASH_TAG, SORT_CODE, BANK_ACCOUNT, CRYPTO_ADDRESS)
