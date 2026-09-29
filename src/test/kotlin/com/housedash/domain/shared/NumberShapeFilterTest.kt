@@ -77,8 +77,9 @@ class NumberShapeFilterTest {
             "call me about the 1;250;000;000 lira bill",
         ).forEach(::assertNothingFound)
     }
+
     @Test
-    fun `a separator is anything but a letter, a digit and the three marks the thousands arm owns`() {
+    fun `a separator is anything that is neither a letter nor a digit`() {
         listOf(
             "917\u3002555\u30020199",
             "917\uFF61555\uFF610199",
