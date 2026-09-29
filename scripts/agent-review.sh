@@ -7,8 +7,8 @@ repo="${owner_repo##*/}"
 pr="${PR_NUMBER:?PR_NUMBER is required}"
 head_sha="${HEAD_SHA:?HEAD_SHA is required}"
 
-if [ "${#head_sha}" -lt 7 ]; then
-    printf 'HEAD_SHA %s is too short to match a review trailer\n' "$head_sha" >&2
+if [ "${#head_sha}" -ne 40 ]; then
+    printf 'HEAD_SHA %s is not a full commit sha, and a trailer is only accepted when it names one exactly\n' "$head_sha" >&2
     exit 2
 fi
 
@@ -18,17 +18,22 @@ if [ -z "$changed" ]; then
     exit 2
 fi
 
-invariant_bearing='^src/[^/]+/kotlin/com/housedash/domain/'
-if ! git ls-files | grep -Eq "$invariant_bearing"; then
-    printf 'no file in this checkout matches %s, so the invariants trigger can no longer see the layer it guards; update this pattern\n' "$invariant_bearing" >&2
-    exit 2
-fi
+invariant_bearing=('^"?src/[^/]+/kotlin/com/housedash/domain/')
+for pattern in "${invariant_bearing[@]}"; do
+    if ! git ls-files | grep -Eq "$pattern"; then
+        printf 'no file in this checkout matches %s, so the invariants trigger can no longer see the layer it guards; update this pattern\n' "$pattern" >&2
+        exit 2
+    fi
+done
 
 required=(architecture security testing performance)
 defined_verdicts=(clean blocked)
-if printf '%s\n' "$changed" | grep -Eq "$invariant_bearing"; then
-    required+=(invariants)
-fi
+for pattern in "${invariant_bearing[@]}"; do
+    if printf '%s\n' "$changed" | grep -Eq "$pattern"; then
+        required+=(invariants)
+        break
+    fi
+done
 
 reviews=$(gh api graphql --paginate --slurp -f query='
   query($owner:String!,$repo:String!,$pr:Int!,$endCursor:String){
@@ -77,16 +82,16 @@ own_trailer='.body
 
 trailers=$(printf '%s' "$reviews" \
     | jq -r ".[] | select(${entitled}) | ${own_trailer}" \
-    | grep -xE '<!--[[:space:]]*review-sha:[[:space:]]*[0-9a-f]{7,40}[[:space:]]+dimension:[[:space:]]*[a-z]+[[:space:]]+verdict:[[:space:]]*[a-z]+[[:space:]]*-->' \
+    | grep -xE '<!--[[:space:]]*review-sha:[[:space:]]*[0-9a-f]{40}[[:space:]]+dimension:[[:space:]]*[^[:space:]]+[[:space:]]+verdict:[[:space:]]*[^[:space:]]+[[:space:]]*-->' \
     || true)
 
 at_head=""
 while read -r sha dimension verdict; do
     [ -z "${sha:-}" ] && continue
-    case "$head_sha" in
-        "$sha"*) at_head+="${dimension} ${verdict}"$'\n' ;;
-    esac
-done < <(printf '%s\n' "$trailers" | sed -E 's/^<!--[[:space:]]*review-sha:[[:space:]]*([0-9a-f]+)[[:space:]]+dimension:[[:space:]]*([a-z]+)[[:space:]]+verdict:[[:space:]]*([a-z]+)[[:space:]]*-->$/\1 \2 \3/')
+    if [ "$sha" = "$head_sha" ]; then
+        at_head+="${dimension} ${verdict}"$'\n'
+    fi
+done < <(printf '%s\n' "$trailers" | sed -E 's/^<!--[[:space:]]*review-sha:[[:space:]]*([0-9a-f]+)[[:space:]]+dimension:[[:space:]]*([^[:space:]]+)[[:space:]]+verdict:[[:space:]]*([^[:space:]]+)[[:space:]]*-->$/\1 \2 \3/')
 
 fail=0
 
@@ -100,7 +105,12 @@ done
 while read -r dimension verdict; do
     [ -z "${dimension:-}" ] && continue
     case "$verdict" in
-        clean) ;;
+        clean)
+            if ! printf '%s\n' "${required[@]}" | grep -qxF "$dimension"; then
+                printf 'note: a clean %s review at %s names a dimension this diff does not require (%s) and is not counted\n' \
+                    "$dimension" "${head_sha:0:8}" "${required[*]}" >&2
+            fi
+            ;;
         blocked)
             printf 'blocked: %s review at %s reports verdict blocked\n' "$dimension" "${head_sha:0:8}" >&2
             fail=1
@@ -113,8 +123,8 @@ while read -r dimension verdict; do
     esac
 done < <(printf '%s' "$at_head")
 
-unresolved=$(printf '%s' "$threads" | jq '[.[] | select(.isResolved == false)] | length')
-if [ "$unresolved" -gt 0 ]; then
+unresolved=$(printf '%s' "$threads" | jq '[.[] | select(.isResolved == false)] | length' 2>/dev/null || true)
+if [ "${unresolved:-0}" -gt 0 ]; then
     printf 'note: %s unresolved thread(s); the ruleset blocks the merge on these, not this check\n' "$unresolved" >&2
 fi
 

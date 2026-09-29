@@ -324,7 +324,7 @@ class AbsenceTest {
 
         const val INVARIANTS_REQUIRED = "required+=(invariants)"
 
-        const val DOMAIN_DIFF_TRIGGER = "^src/[^/]+/kotlin/com/housedash/domain/"
+        const val DOMAIN_DIFF_TRIGGER = "^\"?src/[^/]+/kotlin/com/housedash/domain/"
 
         val WHITESPACE = Regex("""\s+""")
 
