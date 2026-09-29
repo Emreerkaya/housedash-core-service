@@ -4,6 +4,20 @@ import org.junit.jupiter.api.Test
 
 class WordedAddressFilterTest {
     @Test
+    fun `a bracketed dot needs no space around it, whatever the host is`() {
+        listOf(
+            "bob at gmail(dot)com",
+            "bob at yahoo[dot]com",
+            "bob at hotmail{dot}com",
+            "bob at outlook<dot>com",
+            "write to bob at gmail(dot)com about the leak under the sink",
+        ).forEach(::assertEmailAddress)
+        assertNothingFound("write to bob at example.x about the leak under the sink here")
+        assertNothingFound("write to bob@example.x about the leak under the sink here")
+        assertNothingFound("write to bob@example.abcdefghijklmnopqrstuvwxyzabcd about the leak")
+    }
+
+    @Test
     fun `the worded at reads every dot the file declares, and the comma is a measured refusal`() {
         listOf(
             "bob at gmail\u00B7com",
