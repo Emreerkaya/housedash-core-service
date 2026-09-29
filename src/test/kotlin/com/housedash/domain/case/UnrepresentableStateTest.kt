@@ -2,6 +2,7 @@ package com.housedash.domain.case
 
 import com.housedash.domain.shared.Identifier
 import com.housedash.domain.shared.IdentifierShape
+import com.housedash.domain.shared.Outcome
 import java.lang.reflect.Constructor
 import java.lang.reflect.InvocationTargetException
 import java.lang.reflect.Modifier
@@ -207,11 +208,14 @@ class UnrepresentableStateTest {
     }
 
     @Test
-    fun `the public synthetic constructor of Description cannot build one holding contact details`() {
+    fun `the constructor of Description enforces the shape rules and not the contact filter`() {
         val constructor = Description::class.java.constructors.single()
         assertIs<IllegalArgumentException>(
-            thrownBy(constructor, arrayOf("call me on 917-555-0199 about the tap", null)),
+            thrownBy(constructor, arrayOf("the kitchen tap\u0000 drips all day long", null)),
         )
+        val leaked = "call me on 917-555-0199 about the tap"
+        assertEquals(leaked, assertIs<Description>(constructor.newInstance(leaked, null)).text)
+        assertIs<Outcome.Err<CaseError>>(Description.of(leaked))
     }
 
     @Test

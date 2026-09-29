@@ -311,18 +311,28 @@ class ContactFilterTest {
     }
 
     @Test
-    fun `a comma or a colon separates the groups of a phone number, and this arm needs a cue`() {
+    fun `a comma, a semicolon or a colon groups a phone number and no cue is required`() {
         assertPhoneNumber("call me on 917,555,0199")
         assertPhoneNumber("text me on 917;555;0199")
         assertPhoneNumber("my number is 917:555:0199")
-        assertNothingFound("917,555,0199 is best")
+        assertPhoneNumber("917,555,0199 is best")
+        assertPhoneNumber("pay me at 917,555,0199 instead of using the app")
+        assertPhoneNumber("email me at 917,555,0199 rather than messaging in here")
+        assertPhoneNumber("reach me 917;555;0199 anytime")
+        assertPhoneNumber("917:555:0199 is best")
+        assertPhoneNumber("+44,7700,900123")
     }
 
     @Test
-    fun `a comma separated list of ordinary numbers is not a phone number`() {
+    fun `an uncued run whose every group is longer or shorter than an exchange is not a phone number`() {
         assertNothingFound("boiler serviced 2019, 2021, 2023 and now it leaks")
-        assertNothingFound("the quotes were 1200, 450, 600 from three firms")
-        assertNothingFound("the runs are 1500, 900, 750 mm end to end here")
+        assertNothingFound("boiler serviced 2019 2021 2023 and now it leaks")
+        assertNothingFound("the radiators are 1400, 1600, 1800 mm along that wall")
+        assertNothingFound("the radiators are 1400 1600 1800 mm along that wall")
+        assertNothingFound("radiator widths are\n1400\n1600\n1800\nacross the hallway")
+        assertNothingFound("invoices 4455 4456 4457 are all still unpaid")
+        assertNothingFound("lengths 1200 1500 1800 and 2100 mm are needed")
+        assertNothingFound("the gauge showed 12 34 56 78 90 across the week")
     }
 
     @Test
@@ -360,9 +370,17 @@ class ContactFilterTest {
     }
 
     @Test
-    fun `three groups of digits are a phone number even when they are years or millimetres`() {
-        assertPhoneNumber("boiler serviced 2019 2021 2023 and now it leaks")
-        assertPhoneNumber("the radiators are 1400 1600 1800 mm along that wall")
+    fun `these are known false positives and not a specification, an uncued run with an exchange sized group`() {
+        assertPhoneNumber("the quotes were 1200, 450, 600 from three firms")
+        assertPhoneNumber("the runs are 1500, 900, 750 mm end to end here")
+        assertPhoneNumber("1234,567,890 is best")
+        assertPhoneNumber("readings were 120 130 125 psi over three days")
+        assertPhoneNumber("meter readings:\n120\n130\n125\nover three days")
+        assertPhoneNumber("quotes so far:\n1200\n450\n600\nfrom three firms")
+        assertPhoneNumber("flats 101 102 103 all have the same leak")
+        assertPhoneNumber("codes 101-102-103 are on the fuse box door")
+        assertPhoneNumber("rooms 201 305 410 are affected by the damp")
+        assertPhoneNumber("phase readings 230 231 229 volts at the board")
     }
 
     @Test
@@ -448,7 +466,6 @@ class ContactFilterTest {
     fun `thousands separators are money and not a phone number`() {
         assertNothingFound("the run cost 123,456,789 lira all in")
         assertNothingFound("the invoice total was 1,250.00 and 1,234 parts")
-        assertNothingFound("1234,567,890 is best")
         assertPhoneNumber("call 1234,567,890 now")
     }
 
@@ -608,6 +625,8 @@ class ContactFilterTest {
             "my insta is bobplumber if you want it",
             "reach me at bit.ly/bobplumber for the quote",
             "917 then 555 then 0199 is the number",
+            "7700 9001 2345 is best",
+            "7700,9001,2345 is best",
             "bob at example dot see oh em",
             "scan the qr code on my van",
         ).forEach(::assertNothingFound)

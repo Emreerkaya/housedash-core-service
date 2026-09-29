@@ -1,5 +1,6 @@
 package com.housedash.domain.case
 
+import com.housedash.domain.shared.Outcome
 import java.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -87,12 +88,26 @@ class CaseRehydrationTest {
     }
 
     @Test
-    fun `a described row whose description no longer passes its own rule is corrupt`() {
+    fun `a described row whose description breaks a shape rule is corrupt`() {
         assertEquals(CaseFault.DESCRIPTION_REJECTED, faultOf(describedRow(description = "tap")))
         assertEquals(
             CaseFault.DESCRIPTION_REJECTED,
-            faultOf(describedRow(description = "call me on 917-555-0199 about it")),
+            faultOf(describedRow(description = "the kitchen tap\u0000 drips all day long")),
         )
+        assertEquals(CaseFault.DESCRIPTION_REJECTED, faultOf(describedRow(description = "a".repeat(2001))))
+    }
+
+    @Test
+    fun `a stored description is not filtered again on load, so tightening the I7 filter loses no case`() {
+        listOf(
+            "call me on 917-555-0199 about it",
+            "flats 101 102 103 all have the same leak",
+            "readings were 120 130 125 psi over three days",
+        ).forEach { stored ->
+            val case = assertIs<DescribedCase>(Case.rehydrate(describedRow(description = stored), emptyList()))
+            assertEquals(stored, case.description.text, stored)
+            assertIs<Outcome.Err<CaseError>>(Description.of(stored), stored)
+        }
     }
 
     @Test

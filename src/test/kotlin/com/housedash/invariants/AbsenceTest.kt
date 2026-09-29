@@ -4,9 +4,11 @@ import com.tngtech.archunit.core.domain.JavaClass
 import com.tngtech.archunit.core.importer.ClassFileImporter
 import com.tngtech.archunit.core.importer.ImportOption
 import com.tngtech.archunit.core.importer.Location
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.io.File
+import java.nio.file.Files
 
 class AbsenceTest {
     private val productionOnly =
@@ -33,7 +35,7 @@ class AbsenceTest {
     }
 
     @Test
-    fun `the structural I3 rule, nothing in the domain orders a collection or holds a comparator`() {
+    fun `I3 call tripwire, not a proof, nothing in the domain names an ordering call or a comparator`() {
         val offences =
             codebase
                 .filter { it.packageName.startsWith(DOMAIN_PACKAGE) }
@@ -46,11 +48,19 @@ class AbsenceTest {
                             .map { (kind, name) -> "${type.name}: $kind $name" }
                 }
         assertTrue(offences.isEmpty()) {
-            "this rule is the one part of I3 that is a proof rather than a tripwire: it names a shape, not a " +
-                "word, so no choice of field name evades it. D166 rules that a rating may be displayed and " +
-                "must never order, and a field name is not the only way to order: a comparator or a sortedBy " +
-                "is the other. Quotes are ordered by sentAt at the boundary, not inside the domain. Remove " +
-                "these, or amend I3 and D166 first:\n" + offences.joinToString("\n")
+            "$A_TRIPWIRE_NOT_A_PROOF This one lists calls rather than field names, which is a second " +
+                "vocabulary and not a shape: ArchUnit sees names, and an ordering can carry none. D166 rules " +
+                "that a rating may be displayed and must never order, and a field name is not the only way " +
+                "to order: a comparator or a sortedBy is the other. What this test delivers is that no " +
+                "domain method calls one of the ${ORDERING_CALLS.size} names in ORDERING_CALLS and that no " +
+                "domain member's name carries the stem compar. What it does not deliver is an ordering the " +
+                "compiler inlines, which emits no named call at all: maxBy { it.rating } over an Int key " +
+                "compiles to an iterator loop and one integer comparison and walks this rule green, and " +
+                "$ORDERING_CALLS_THE_COMPILER_INLINES are themselves inline in the standard library, so " +
+                "${ORDERING_CALLS_THE_COMPILER_INLINES.size} of the listed names can never appear in " +
+                "bytecode at all. $THE_RESIDUAL Quotes " +
+                "are ordered by sentAt at the boundary, not inside the domain. Remove these, or amend I3 " +
+                "and D166 first:\n" + offences.joinToString("\n")
         }
     }
 
@@ -121,13 +131,23 @@ class AbsenceTest {
     }
 
     @Test
-    fun `the structural rule recognises an ordering call and a comparator under any name`() {
+    fun `the ordering tripwire recognises an ordering call and a comparator under any name`() {
         listOf("taskerComparator", "quoteComparing", "Comparator", "byComparison").forEach { name ->
             assertTrue(tokensOf(name).any(::isComparatorToken), name)
         }
         assertTrue(ORDERING_CALLS.contains("sortedBy"))
         assertTrue(ORDERING_CALLS.contains("sortedWith"))
         assertTrue(ORDERING_CALLS.contains("compareBy"))
+    }
+
+    @Test
+    fun `the ordering tripwire lists names the compiler inlines, which no bytecode can ever carry`() {
+        assertTrue(ORDERING_CALLS.containsAll(ORDERING_CALLS_THE_COMPILER_INLINES))
+        assertTrue(ORDERING_CALLS_THE_COMPILER_INLINES.isNotEmpty())
+        assertTrue(!ORDERING_CALLS.contains("maxBy")) {
+            "maxBy was added to ORDERING_CALLS, which does not close the gap the failure message names: it " +
+                "is inline, so the call never reaches bytecode and the rule stays green on it"
+        }
     }
 
     @Test
@@ -183,29 +203,77 @@ class AbsenceTest {
     }
 
     @Test
-    fun `every domain package that exists announces itself to a human reviewer through CODEOWNERS`() {
-        val owned =
-            File(CODEOWNERS_FILE)
-                .readLines()
-                .map { it.trim() }
-                .filter { it.isNotEmpty() && !it.startsWith("#") }
-                .map { it.substringBefore(' ') }
-                .toSet()
-        val packages =
-            File(DOMAIN_SOURCE_ROOT)
-                .listFiles()
-                .orEmpty()
-                .filter { it.isDirectory && it.listFiles().orEmpty().any { file -> file.extension == "kt" } }
-                .map { "/$DOMAIN_SOURCE_ROOT/${it.name}/" }
+    fun `every domain package on disk at any depth is covered by a CODEOWNERS entry that names an owner`() {
+        val owned = pathsWithAnOwnerIn(File(CODEOWNERS_FILE).readLines())
+        val packages = packagesUnder(File(DOMAIN_SOURCE_ROOT), "/$DOMAIN_SOURCE_ROOT/")
         assertTrue(packages.isNotEmpty()) { "no domain package was found under $DOMAIN_SOURCE_ROOT" }
-        val unowned = packages.filterNot(owned::contains)
+        val unowned = packages.filterNot { source -> owned.any(source::startsWith) }
         assertTrue(unowned.isEmpty()) {
-            "a keyword list cannot be completed, so the enforcement for a synonym nobody listed is a person " +
-                "reading the diff, and CODEOWNERS is what puts them there. A domain package with no entry of " +
-                "its own is reviewed under the catch-all and announces nothing, which is the half of this " +
-                "guard that is not a word list. Add an entry for:\n" + unowned.joinToString("\n")
+            "a keyword list cannot be completed, and this guard is the half of the answer that is not a " +
+                "word list: every directory under $DOMAIN_SOURCE_ROOT that holds Kotlin at any depth is " +
+                "named by a CODEOWNERS entry that carries at least one owner after the path. A path with no " +
+                "owner after it does not satisfy this and must not: a more specific pattern with an empty " +
+                "owner list takes the package out of the catch-all it was under, which is worse than having " +
+                "no line at all. What this guard does not deliver is a reviewer. $THE_RESIDUAL An entry " +
+                "pointing at a package that does not exist is deliberately not checked, because the " +
+                "forward declarations are intentional. Add an entry with an owner for:\n" +
+                unowned.joinToString("\n")
         }
     }
+
+    @Test
+    fun `the CODEOWNERS guard rejects an entry with no owner and sees a package one directory deeper`() {
+        assertTrue(pathsWithAnOwnerIn(listOf("/domain/matching/")).isEmpty())
+        assertTrue(pathsWithAnOwnerIn(listOf("/domain/matching/   ")).isEmpty())
+        assertTrue(pathsWithAnOwnerIn(listOf("/domain/matching/ # @Emreerkaya")).isEmpty())
+        assertEquals(setOf("/domain/matching/"), pathsWithAnOwnerIn(listOf("/domain/matching/ @Emreerkaya")))
+        val root = Files.createTempDirectory("codeowners-guard").toFile()
+        File(root, "matching/rules").mkdirs()
+        File(root, "matching/rules/Rules.kt").writeText("package com.housedash.domain.matching.rules\n")
+        val planted = packagesUnder(root, "/$DOMAIN_SOURCE_ROOT/")
+        assertEquals(
+            listOf("/$DOMAIN_SOURCE_ROOT/matching/", "/$DOMAIN_SOURCE_ROOT/matching/rules/"),
+            planted.sorted(),
+        )
+        assertTrue(planted.none { source -> pathsWithAnOwnerIn(listOf("/domain/matching/")).any(source::startsWith) })
+        root.deleteRecursively()
+    }
+
+    @Test
+    fun `the mechanism both tripwires hand their residual to is required by the merge gate for this layer`() {
+        val gate = File(MERGE_GATE_SCRIPT).readText()
+        assertTrue(THE_RESIDUAL.contains(MERGE_GATE_SCRIPT)) {
+            "the residual clause no longer names the file this test reads, so the two can drift apart"
+        }
+        assertTrue(gate.contains(INVARIANTS_REQUIRED)) {
+            "$MERGE_GATE_SCRIPT no longer adds the invariants dimension to the required set, so both " +
+                "tripwires now hand their residual to a mechanism that does not fire, which is D178 again"
+        }
+        assertTrue(gate.contains(DOMAIN_DIFF_TRIGGER)) {
+            "$MERGE_GATE_SCRIPT no longer keys the invariants dimension on a diff under $DOMAIN_SOURCE_ROOT, " +
+                "so a change to this layer can be merged with no invariants review"
+        }
+    }
+
+    private fun pathsWithAnOwnerIn(lines: List<String>): Set<String> =
+        lines
+            .map { it.substringBefore('#').trim() }
+            .filter { it.isNotEmpty() }
+            .map { it.split(WHITESPACE) }
+            .filter { tokens -> tokens.drop(1).any { it.startsWith(OWNER_PREFIX) } }
+            .map { it.first() }
+            .toSet()
+
+    private fun packagesUnder(
+        root: File,
+        entryPrefix: String,
+    ): List<String> =
+        root
+            .walkTopDown()
+            .filter { it.isDirectory && it != root }
+            .filter { directory -> directory.walkTopDown().any { it.isFile && it.extension == "kt" } }
+            .map { entryPrefix + it.toRelativeString(root).replace(File.separatorChar, '/') + "/" }
+            .toList()
 
     private fun positionOffencesOf(type: JavaClass): List<String> =
         namedMembersOf(type)
@@ -250,6 +318,16 @@ class AbsenceTest {
 
         const val CODEOWNERS_FILE = "CODEOWNERS"
 
+        const val OWNER_PREFIX = "@"
+
+        const val MERGE_GATE_SCRIPT = "scripts/agent-review.sh"
+
+        const val INVARIANTS_REQUIRED = "required+=(invariants)"
+
+        const val DOMAIN_DIFF_TRIGGER = "^src/[^/]+/kotlin/com/housedash/domain/"
+
+        val WHITESPACE = Regex("""\s+""")
+
         const val FEWEST_PRODUCTION_TYPES = 20
 
         const val FEWEST_NAMED_MEMBERS = 200
@@ -262,9 +340,12 @@ class AbsenceTest {
             "this test is a tripwire, not a proof, and a keyword list cannot be completed."
 
         const val THE_RESIDUAL =
-            "The residual is covered by a person reading the diff, which CODEOWNERS forces for every domain " +
-                "package, and by the structural rule beside this one that no domain type orders a collection " +
-                "or holds a comparator, which names a shape rather than a word."
+            "The residual belongs to the one mechanism on this repository that blocks a merge on a human " +
+                "judgement: the invariants review dimension, which scripts/agent-review.sh requires of " +
+                "every pull request whose diff touches src/*/kotlin/com/housedash/domain/ and without " +
+                "which the merge gate exits non-zero. It is not covered by CODEOWNERS, which D178 measured " +
+                "as require_code_owner_review false, zero required approvals and one collaborator who is " +
+                "every pull request's author, so an entry names an owner and summons nobody."
 
         val POSITION_NAMES_THAT_MEAN_SOMETHING_ELSE =
             setOf(
@@ -333,6 +414,8 @@ class AbsenceTest {
                 "gratuity",
                 "toll",
             )
+
+        val ORDERING_CALLS_THE_COMPILER_INLINES = setOf("maxByOrNull", "minByOrNull", "compareBy", "thenBy")
 
         val ORDERING_CALLS =
             setOf(

@@ -3,6 +3,7 @@ package com.housedash.architecture
 import com.tngtech.archunit.base.DescribedPredicate
 import com.tngtech.archunit.core.domain.JavaCall
 import com.tngtech.archunit.core.domain.JavaClass
+import com.tngtech.archunit.core.domain.JavaMethod
 import com.tngtech.archunit.core.domain.JavaModifier
 import com.tngtech.archunit.core.domain.JavaParameterizedType
 import com.tngtech.archunit.core.domain.JavaType
@@ -88,10 +89,17 @@ class LayeringTest {
         JavaModifier.PRIVATE !in modifiers && JavaModifier.SYNTHETIC !in modifiers
     }
 
+    private val mintsRatherThanReads: (JavaMethod) -> Boolean = { method ->
+        method.rawParameterTypes.isNotEmpty() ||
+            JavaModifier.STATIC in method.modifiers ||
+            method.owner.simpleName == COMPANION_OBJECT
+    }
+
     private val mintTargetsByProducedType: Map<String, Set<String>> =
         domain
             .flatMap { it.methods }
             .filter { reachableFromOutside(it.modifiers) }
+            .filter(mintsRatherThanReads)
             .flatMap { method ->
                 typesNamedIn(method.returnType)
                     .filter(closedConstruction::test)
@@ -345,12 +353,21 @@ class LayeringTest {
             ).`as`(
                 "a type whose constructors a bounded context made private is minted by that package alone. " +
                     "What is watched is every reachable domain member that names such a type in its return " +
-                    "position, directly or as a type argument of a wrapper, plus every constructor call: " +
+                    "position, directly or as a type argument of a wrapper, and that is given something to " +
+                    "build from — it takes at least one argument, or is static, or is declared on a " +
+                    "companion — plus every constructor call: " +
                     "${mintTargetsByProducedType.values.sumOf { it.size }} routes over " +
-                    "${mintTargetsByProducedType.size} types, $mintTargetsByProducedType. What is not " +
-                    "watched is a route that never names the type it produces — a member declared to return " +
-                    "a supertype, an Any, or a value written into a parameter — and D173's residual, which " +
-                    "is that anyone holding a NesterId may claim it as an owner",
+                    "${mintTargetsByProducedType.size} types, $mintTargetsByProducedType. Reading a value is " +
+                    "not making one, so a property getter, which takes nothing and hands back what its owner " +
+                    "already holds, is not a route; without that the persistence adapter entitled to " +
+                    "reconstruct an aggregate by the rule beside this one would be forbidden to serialise it. " +
+                    "What is not watched is a route that never names the type it produces — a member declared " +
+                    "to return a supertype, an Any, or a value written into a parameter — an instance member " +
+                    "that mints from no argument at all, and D173's residual, which is that anyone holding a " +
+                    "NesterId may claim it as an owner. Parsing a value object at an inbound boundary is a " +
+                    "watched route on purpose and stays one: CaseId.of, PhotoId.of and Description.of are " +
+                    "where the identifier shapes and the I7 filter run, and the package that needs them is " +
+                    "entitled by name the way $persistencePackage is entitled above, never by a wildcard",
             ).check(codebase)
     }
 
@@ -369,6 +386,31 @@ class LayeringTest {
                 "an aggregate is reconstructable by the repository and by nothing else; forging the row and " +
                     "calling the entry point are both the same capability and both belong to $persistencePackage",
             ).check(codebase)
+    }
+
+    @Test
+    fun `a property getter is not a mint route and a factory that takes an argument is`() {
+        val describedCase = domain.single { it.simpleName == "DescribedCase" }
+        val readers = describedCase.methods.filter { it.name in READING_MEMBERS }
+        assertTrue(readers.size == READING_MEMBERS.size) {
+            "the members this test names as readers are $READING_MEMBERS and DescribedCase declares " +
+                "${describedCase.methods.map { it.name }}, so the exclusion no longer names what it excludes"
+        }
+        readers.forEach { reader ->
+            assertTrue(typesNamedIn(reader.returnType).any(closedConstruction::test)) {
+                "${reader.name} no longer returns a closed domain type, so it can no longer show that " +
+                    "reading one is distinguished from minting one"
+            }
+            assertTrue(!mintsRatherThanReads(reader)) {
+                "${reader.name} is counted as a mint route, so the persistence adapter cannot serialise the " +
+                    "aggregate the reconstruction rule entitles it to rebuild"
+            }
+        }
+        val factories = domain.flatMap { it.methods }.filter { it.name == "rehydrated" }
+        assertTrue(factories.isNotEmpty())
+        factories.forEach { factory ->
+            assertTrue(mintsRatherThanReads(factory)) { "${factory.owner.name}#rehydrated is no longer watched" }
+        }
     }
 
     @Test
@@ -392,5 +434,11 @@ class LayeringTest {
         assertTrue(reconstructionEntryPoints.isNotEmpty()) {
             "no reachable member takes a stored-row type, so the reconstruction boundary enforces nothing"
         }
+    }
+
+    private companion object {
+        const val COMPANION_OBJECT = "Companion"
+
+        val READING_MEMBERS = setOf("getId", "getDescription", "getPhotos")
     }
 }
