@@ -270,7 +270,9 @@ private const val DIGITS_IN_A_DIALABLE_NUMBER = 10
 
 private const val DIGITS_IN_THE_LINE_GROUP = 4
 
-private const val GROUPS_FROM_THE_END_TO_THE_EXCHANGE = 2
+private const val GROUPS_FROM_THE_END_TO_THE_LINES_OWN_GROUP = 2
+
+private val DIGITS_IN_THE_GROUP_BEFORE_THE_LINE = 3..4
 
 private const val FEWEST_SINGLE_DIGIT_GROUPS = 9
 
@@ -410,7 +412,8 @@ private fun isDialableWithoutACue(
     val endsLikeAnExchangeAndALine =
         digits == DIGITS_IN_A_DIALABLE_NUMBER &&
             groups.last() == DIGITS_IN_THE_LINE_GROUP &&
-            groups[groups.size - GROUPS_FROM_THE_END_TO_THE_EXCHANGE] == DIGITS_IN_AN_EXCHANGE_GROUP
+            groups[groups.size - GROUPS_FROM_THE_END_TO_THE_LINES_OWN_GROUP] in
+            DIGITS_IN_THE_GROUP_BEFORE_THE_LINE
     val strayDigitsBrokeUpADialableRun =
         digitsBeforeTrimming == DIGITS_IN_A_DIALABLE_NUMBER &&
             digitsBeforeTrimming > digits &&

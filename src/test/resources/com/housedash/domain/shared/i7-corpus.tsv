@@ -21,8 +21,8 @@ REJECT	ACCEPT	bob@gmail｡com	U+FF61
 REJECT	ACCEPT	bob@gmail,com	comma as the label separator
 REJECT	ACCEPT	bob<at>gmail.com	{at} is caught, <at> is not
 REJECT	ACCEPT	bob[at]gmail·com	both axes at once
-REJECT	ACCEPT	Leaking tap under the sink, reach me 91-7555-0199 anytime	regression against 458c134; dialable 9175550199 written 2-4-4
-REJECT	ACCEPT	Boiler wont fire, hit me up 21 2555 1234 before noon please	regression against 458c134; dialable 2125551234 written 2-4-4
+REJECT	REJECT	Leaking tap under the sink, reach me 91-7555-0199 anytime	closed by widening the group before the line; dialable 9175550199 written 2-4-4
+REJECT	REJECT	Boiler wont fire, hit me up 21 2555 1234 before noon please	closed by widening the group before the line; dialable 2125551234 written 2-4-4
 REJECT	ACCEPT	2125-551234	inherited
 REJECT	ACCEPT	212-5551234	inherited
 REJECT	ACCEPT	2125.551234	inherited
