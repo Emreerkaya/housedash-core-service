@@ -145,7 +145,7 @@ private fun hasPhoneShape(
         internationallyPrefixed -> true
         groups.size == ONE_GROUP -> words.cued
         !isGroupedWithinAPhoneNumbersLimits(groups) -> false
-        words.cued -> true
+        words.cued -> digitsBeforeTrimming >= DIGITS_IN_A_DIALABLE_NUMBER
         else -> isDialableWithoutACue(groups, digitsBeforeTrimming, words.namedOtherwise)
     }
 
