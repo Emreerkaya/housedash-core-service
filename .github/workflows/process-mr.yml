@@ -2,10 +2,12 @@ name: process-mr
 
 on:
   pull_request:
+  pull_request_review:
+    types: [submitted, edited, dismissed]
 
 concurrency:
-  group: mr-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
+  group: mr-${{ github.event.pull_request.number }}-${{ github.event_name }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -18,7 +20,7 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/setup-jvm
-      - run: just commits origin/${{ github.base_ref }}
+      - run: just commits origin/${{ github.event.pull_request.base.ref }}
 
   ktlint:
     runs-on: ubuntu-latest
