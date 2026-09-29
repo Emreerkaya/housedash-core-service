@@ -140,7 +140,7 @@ private const val MOST_PUNCTUATED_SEPARATORS = "{1,5}+"
 
 private val PUNCTUATION_GROUPED_CANDIDATE =
     Regex(
-        """$WHOLE_GROUP_OF_DIGITS(?:$THOUSANDS_PUNCTUATION$WHOLE_GROUP_OF_DIGITS)""" +
+        """\+?+$WHOLE_GROUP_OF_DIGITS(?:$THOUSANDS_PUNCTUATION$WHOLE_GROUP_OF_DIGITS)""" +
             MOST_PUNCTUATED_SEPARATORS,
     )
 
@@ -264,6 +264,8 @@ private const val MOST_DIGITS_IN_A_PHONE_GROUP = 6
 
 private const val FEWEST_DIGITS_IN_THE_LAST_PHONE_GROUP = 3
 
+private const val DIGITS_IN_AN_EXCHANGE_GROUP = 3
+
 private const val FEWEST_SINGLE_DIGIT_GROUPS = 9
 
 private const val ONE_DIGIT = 1
@@ -347,7 +349,6 @@ private fun isAPhoneNumber(
     val to = (candidate.range.last + 1 + PHONE_CUE_WINDOW).coerceAtMost(folded.length)
     val around = folded.substring(from, to)
     val cued = PHONE_CUE.containsMatchIn(around) || UNQUALIFIED_NUMBER_CUE.containsMatchIn(around)
-    if (punctuationGrouped && !cued) return false
     val prefixed = candidate.value.startsWith(INTERNATIONAL_PREFIX)
     val separators = DIGIT_GROUP.split(candidate.value).drop(1).dropLast(1)
     if (groups.sum() in PHONE_DIGIT_COUNT &&
@@ -379,14 +380,23 @@ private fun hasPhoneShape(
         internationallyPrefixed -> true
         isSpreadOneDigitToASeparator(groups, separators) -> true
         groups.size == ONE_GROUP -> cued
-        !isGroupedLikeAPhoneNumber(groups) -> false
-        else -> groups.size >= FEWEST_GROUPS_NO_OTHER_NUMBER_USES || cued
+        else -> isGroupedLikeAPhoneNumber(groups, cued)
     }
 
-private fun isGroupedLikeAPhoneNumber(groups: List<Int>): Boolean =
+private fun isGroupedLikeAPhoneNumber(
+    groups: List<Int>,
+    cued: Boolean,
+): Boolean =
     groups.size <= MOST_PHONE_GROUPS &&
         groups.all { it <= MOST_DIGITS_IN_A_PHONE_GROUP } &&
-        groups.last() >= FEWEST_DIGITS_IN_THE_LAST_PHONE_GROUP
+        groups.last() >= FEWEST_DIGITS_IN_THE_LAST_PHONE_GROUP &&
+        (
+            cued ||
+                (
+                    groups.size >= FEWEST_GROUPS_NO_OTHER_NUMBER_USES &&
+                        groups.any { it == DIGITS_IN_AN_EXCHANGE_GROUP }
+                )
+        )
 
 private fun isGroupedLikeThousands(groups: List<Int>): Boolean =
     groups.first() <= MOST_DIGITS_BEFORE_A_THOUSANDS_SEPARATOR &&

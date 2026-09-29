@@ -93,8 +93,8 @@ private fun photoIdOrThrow(raw: String): PhotoId =
         is Outcome.Err -> throw CorruptCase(CaseFault.MALFORMED_PHOTO_ID)
     }
 
-private fun descriptionOrThrow(raw: String): Description =
-    when (val parsed = Description.of(raw)) {
+private fun descriptionOrThrow(stored: String): Description =
+    when (val parsed = Description.rehydrated(stored)) {
         is Outcome.Ok -> parsed.value
         is Outcome.Err -> throw CorruptCase(CaseFault.DESCRIPTION_REJECTED)
     }

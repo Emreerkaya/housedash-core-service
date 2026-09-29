@@ -9,7 +9,7 @@ class Description private constructor(
     val text: String,
 ) {
     init {
-        require(accepted(text) is Outcome.Ok<*>) { "description text does not satisfy the description rule" }
+        require(shaped(text) is Outcome.Ok<*>) { "description text does not satisfy the description shape rule" }
     }
 
     override fun equals(other: Any?): Boolean = other is Description && other.text == text
@@ -23,11 +23,17 @@ class Description private constructor(
         private val RULE = FreeTextRule(MIN_LENGTH, MAX_LENGTH)
 
         fun of(raw: String): Outcome<Description, CaseError> =
-            accepted(raw)
+            shaped(raw)
+                .flatMap(::withoutContactDetails)
                 .mapError(::asCaseError)
                 .map { Description(it) }
 
-        private fun accepted(raw: String): Outcome<String, TextFlaw> = RULE.check(raw).flatMap(::withoutContactDetails)
+        fun rehydrated(stored: String): Outcome<Description, CaseError> =
+            shaped(stored)
+                .mapError(::asCaseError)
+                .map { Description(it) }
+
+        private fun shaped(raw: String): Outcome<String, TextFlaw> = RULE.check(raw)
 
         private fun asCaseError(flaw: TextFlaw): CaseError =
             when (flaw) {
