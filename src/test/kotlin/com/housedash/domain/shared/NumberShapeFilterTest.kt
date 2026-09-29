@@ -33,8 +33,15 @@ class NumberShapeFilterTest {
             "2125.551.234",
             "91755 50199",
             "44-7700-900123",
+            "44 7700 900123",
             "0044 20 7946 0958",
+            "reach 1 2125 5512 34",
             "917 555 01 99",
+            "917,555,01,99",
+            "(917) 555 01 99",
+            "9175 5501 99",
+            "917-555-01-99",
+            "Kitchen tap drips from the base, reach me on 917 555 01 99 to arrange a look",
         ).forEach(::assertNothingFound)
     }
 
