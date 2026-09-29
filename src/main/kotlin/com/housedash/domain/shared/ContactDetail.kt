@@ -119,7 +119,7 @@ internal object TablesTheGuardReads {
 
     const val PUNCTUATION_THE_THOUSANDS_ARM_OWNS = ",;:"
 
-    val phoneSeparator = """[^\p{L}\p{Nd}$PUNCTUATION_THE_THOUSANDS_ARM_OWNS]"""
+    const val SEPARATOR_BETWEEN_TWO_DIGIT_GROUPS = """[^\p{L}\p{Nd}]"""
 
     val waysOfAskingToBeRung =
         listOf(

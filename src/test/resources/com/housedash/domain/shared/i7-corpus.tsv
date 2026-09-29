@@ -155,14 +155,14 @@ REJECT	REJECT	PhoneNumber	call me on 9175550199 about the leak	D256; a cued bare
 REJECT	REJECT	PhoneNumber	my cell is 917 555 0199 please ring	D256; a cued ten-digit grouping, the shape the cue arm must keep
 REJECT	REJECT	PhoneNumber	ring me on 020 7946 0958 tomorrow morning	D256; a cued eleven-digit landline, found only through the cue
 REJECT	REJECT	PhoneNumber	text me on 917 555 0199 when you arrive	D256; a cued ten-digit grouping after a second cue word
-REJECT	ACCEPT		9.1.7.5.5.5.0.1.9.9 is my cell, please ring about the leaking radiator	D263; one digit to a separator, spelled with a mark the second separator table never held (full stop)
-REJECT	ACCEPT		9/1/7/5/5/5/0/1/9/9 is my cell, please ring about the leaking radiator	D263; one digit to a separator, spelled with a mark the second separator table never held (solidus)
-REJECT	ACCEPT		9#1#7#5#5#5#0#1#9#9 is my cell, please ring about the leaking radiator	D263; one digit to a separator, spelled with a mark the second separator table never held (number sign)
-REJECT	ACCEPT		9。1。7。5。5。5。0。1。9。9 is my cell, please ring about the leaking radiator	D263; one digit to a separator, spelled with a mark the second separator table never held (ideographic full stop)
-REJECT	ACCEPT		9•1•7•5•5•5•0•1•9•9 is my cell, please ring about the leaking radiator	D263; one digit to a separator, spelled with a mark the second separator table never held (bullet)
-REJECT	ACCEPT		9,1,7,5,5,5,0,1,9,9 is my cell, please ring about the leaking radiator	D263, D265; one digit to a mark the thousands arm owns, the comma question asked of this arm (comma)
-REJECT	ACCEPT		9;1;7;5;5;5;0;1;9;9 is my cell, please ring about the leaking radiator	D263, D265; one digit to a mark the thousands arm owns, the comma question asked of this arm (semicolon)
-REJECT	ACCEPT		9:1:7:5:5:5:0:1:9:9 is my cell, please ring about the leaking radiator	D263, D265; one digit to a mark the thousands arm owns, the comma question asked of this arm (colon)
+REJECT	REJECT	PhoneNumber	9.1.7.5.5.5.0.1.9.9 is my cell, please ring about the leaking radiator	D263; one digit to a separator, spelled with a mark the second separator table never held (full stop); closed by one separator rule for every arm
+REJECT	REJECT	PhoneNumber	9/1/7/5/5/5/0/1/9/9 is my cell, please ring about the leaking radiator	D263; one digit to a separator, spelled with a mark the second separator table never held (solidus); closed by one separator rule for every arm
+REJECT	REJECT	PhoneNumber	9#1#7#5#5#5#0#1#9#9 is my cell, please ring about the leaking radiator	D263; one digit to a separator, spelled with a mark the second separator table never held (number sign); closed by one separator rule for every arm
+REJECT	REJECT	PhoneNumber	9。1。7。5。5。5。0。1。9。9 is my cell, please ring about the leaking radiator	D263; one digit to a separator, spelled with a mark the second separator table never held (ideographic full stop); closed by one separator rule for every arm
+REJECT	REJECT	PhoneNumber	9•1•7•5•5•5•0•1•9•9 is my cell, please ring about the leaking radiator	D263; one digit to a separator, spelled with a mark the second separator table never held (bullet); closed by one separator rule for every arm
+REJECT	REJECT	PhoneNumber	9,1,7,5,5,5,0,1,9,9 is my cell, please ring about the leaking radiator	D263, D265; one digit to a mark the thousands arm owns, the comma question asked of this arm (comma); closed by one separator rule for every arm
+REJECT	REJECT	PhoneNumber	9;1;7;5;5;5;0;1;9;9 is my cell, please ring about the leaking radiator	D263, D265; one digit to a mark the thousands arm owns, the comma question asked of this arm (semicolon); closed by one separator rule for every arm
+REJECT	REJECT	PhoneNumber	9:1:7:5:5:5:0:1:9:9 is my cell, please ring about the leaking radiator	D263, D265; one digit to a mark the thousands arm owns, the comma question asked of this arm (colon); closed by one separator rule for every arm
 ACCEPT	ACCEPT		replace washers 1, 2, 3, 4, 5, 6, 7, 8, 9 in that order please now	D265; the cost of reading one mark to a digit, kept because the mark is followed by a space and the mark plus the space is not one mark
 REJECT	REJECT	PhoneNumber	replace washers 1 2 3 4 5 6 7 8 9 in that order please now	D265; the space spelled twin of the row above, rejected and pinned as desired
 REJECT	ACCEPT		🄊🄂🄈 🄆🄆🄆 🄁🄂🄊🄊 is my cell, ring about the leak	D264; comma-bearing digit shapes decompose to plain ASCII and the marks are then not all the same, so this stays open
