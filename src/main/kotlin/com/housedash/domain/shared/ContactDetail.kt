@@ -266,6 +266,12 @@ private const val FEWEST_DIGITS_IN_THE_LAST_PHONE_GROUP = 3
 
 private const val DIGITS_IN_AN_EXCHANGE_GROUP = 3
 
+private const val DIGITS_IN_A_DIALABLE_NUMBER = 10
+
+private const val DIGITS_IN_THE_LINE_GROUP = 4
+
+private const val GROUPS_FROM_THE_END_TO_THE_EXCHANGE = 2
+
 private const val FEWEST_SINGLE_DIGIT_GROUPS = 9
 
 private const val ONE_DIGIT = 1
@@ -351,8 +357,12 @@ private fun isAPhoneNumber(
     val cued = PHONE_CUE.containsMatchIn(around) || UNQUALIFIED_NUMBER_CUE.containsMatchIn(around)
     val prefixed = candidate.value.startsWith(INTERNATIONAL_PREFIX)
     val separators = DIGIT_GROUP.split(candidate.value).drop(1).dropLast(1)
-    if (groups.sum() in PHONE_DIGIT_COUNT &&
-        hasPhoneShape(groups, separators, prefixed, cued, punctuationGrouped)
+    val digits = groups.sum()
+    if (digits in PHONE_DIGIT_COUNT &&
+        (
+            isSpreadOneDigitToASeparator(groups, separators) ||
+                hasPhoneShape(groups, digits, prefixed, cued, punctuationGrouped)
+        )
     ) {
         return true
     }
@@ -361,7 +371,7 @@ private fun isAPhoneNumber(
         unpadded.sum() in PHONE_DIGIT_COUNT &&
         hasPhoneShape(
             unpadded,
-            emptyList(),
+            digits,
             prefixed && groups.first() != ONE_DIGIT,
             cued,
             punctuationGrouped,
@@ -370,37 +380,43 @@ private fun isAPhoneNumber(
 
 private fun hasPhoneShape(
     groups: List<Int>,
-    separators: List<String>,
+    digitsBeforeTrimming: Int,
     internationallyPrefixed: Boolean,
     cued: Boolean,
     punctuationGrouped: Boolean,
 ): Boolean =
     when {
-        punctuationGrouped && isGroupedLikeThousands(groups) -> false
+        punctuationGrouped &&
+            groups.first() <= MOST_DIGITS_BEFORE_A_THOUSANDS_SEPARATOR &&
+            groups.drop(1).all { it == DIGITS_IN_A_THOUSANDS_GROUP } -> false
         internationallyPrefixed -> true
-        isSpreadOneDigitToASeparator(groups, separators) -> true
         groups.size == ONE_GROUP -> cued
-        else -> isGroupedLikeAPhoneNumber(groups, cued)
+        !isGroupedWithinAPhoneNumbersLimits(groups) -> false
+        cued -> true
+        else -> isDialableWithoutACue(groups, digitsBeforeTrimming)
     }
 
-private fun isGroupedLikeAPhoneNumber(
-    groups: List<Int>,
-    cued: Boolean,
-): Boolean =
+private fun isGroupedWithinAPhoneNumbersLimits(groups: List<Int>): Boolean =
     groups.size <= MOST_PHONE_GROUPS &&
         groups.all { it <= MOST_DIGITS_IN_A_PHONE_GROUP } &&
-        groups.last() >= FEWEST_DIGITS_IN_THE_LAST_PHONE_GROUP &&
-        (
-            cued ||
-                (
-                    groups.size >= FEWEST_GROUPS_NO_OTHER_NUMBER_USES &&
-                        groups.any { it == DIGITS_IN_AN_EXCHANGE_GROUP }
-                )
-        )
+        groups.last() >= FEWEST_DIGITS_IN_THE_LAST_PHONE_GROUP
 
-private fun isGroupedLikeThousands(groups: List<Int>): Boolean =
-    groups.first() <= MOST_DIGITS_BEFORE_A_THOUSANDS_SEPARATOR &&
-        groups.drop(1).all { it == DIGITS_IN_A_THOUSANDS_GROUP }
+private fun isDialableWithoutACue(
+    groups: List<Int>,
+    digitsBeforeTrimming: Int,
+): Boolean {
+    if (groups.size < FEWEST_GROUPS_NO_OTHER_NUMBER_USES) return false
+    val digits = groups.sum()
+    val endsLikeAnExchangeAndALine =
+        digits == DIGITS_IN_A_DIALABLE_NUMBER &&
+            groups.last() == DIGITS_IN_THE_LINE_GROUP &&
+            groups[groups.size - GROUPS_FROM_THE_END_TO_THE_EXCHANGE] == DIGITS_IN_AN_EXCHANGE_GROUP
+    val strayDigitsBrokeUpADialableRun =
+        digitsBeforeTrimming == DIGITS_IN_A_DIALABLE_NUMBER &&
+            digitsBeforeTrimming > digits &&
+            groups.any { it == DIGITS_IN_AN_EXCHANGE_GROUP }
+    return endsLikeAnExchangeAndALine || strayDigitsBrokeUpADialableRun
+}
 
 private fun isSpreadOneDigitToASeparator(
     groups: List<Int>,

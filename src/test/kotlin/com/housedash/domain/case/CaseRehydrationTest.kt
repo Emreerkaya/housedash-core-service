@@ -101,8 +101,8 @@ class CaseRehydrationTest {
     fun `a stored description is not filtered again on load, so tightening the I7 filter loses no case`() {
         listOf(
             "call me on 917-555-0199 about it",
-            "flats 101 102 103 all have the same leak",
-            "readings were 120 130 125 psi over three days",
+            "pay me at 917,555,0199 instead of using the app",
+            "write to bob at example dot com about the leak",
         ).forEach { stored ->
             val case = assertIs<DescribedCase>(Case.rehydrate(describedRow(description = stored), emptyList()))
             assertEquals(stored, case.description.text, stored)

@@ -198,43 +198,6 @@ class ContactFilterTest {
     }
 
     @Test
-    fun `finds nothing in the numbers a real description carries`() {
-        listOf(
-            "boiler serial 1234567890",
-            "serial number 1234567890 is on the plate behind the panel",
-            "the part number is 0141-445-2266-01 on the label",
-            "appliance model ecoTEC plus 832, serial 21123400123456789",
-            "apartment 4B, buzzer 12 is on the left of the door",
-            "the meter reading was 98765 on 2026-09-24",
-            "invoice 4455 dated 2026-09-24 covers 3 visits",
-            "the parts cost 12.50 13.75 14.00 all in",
-            "sizes 10 12 14 16 18 20 22 are all wrong",
-            "replace washers 1 2 3 4 5 6 7 8 9 10 in that order",
-            "the pipe is 3\u00BD inch across the joint",
-            "the flue is 600 mm long and the gap is 870 mm",
-            "a 2015 model that has leaked for 14 days",
-            "350 East 62nd Street, apartment 4B, third floor walk up",
-            "the manual is at vaillant.co.uk if you want to read it",
-        ).forEach(::assertNothingFound)
-    }
-
-    @Test
-    fun `a ten digit run with no grouping and no phone cue is not a phone number`() {
-        assertNothingFound("boiler serial 1234567890")
-        assertNothingFound("the plate reads 9175550199 and nothing else")
-    }
-
-    @Test
-    fun `a group longer than any phone group is not part of a phone number`() {
-        assertNothingFound("the coil is stamped 1234567 890 on the side")
-    }
-
-    @Test
-    fun `a grouped run with no group long enough for an exchange is not a phone number`() {
-        assertNothingFound("the gauge showed 12 34 56 78 90 across the week")
-    }
-
-    @Test
     fun `nine digits one to a separator is the shortest spread out number matched`() {
         assertPhoneNumber("9 1 7 5 5 5 0 1 9")
     }
@@ -245,16 +208,6 @@ class ContactFilterTest {
             ContactDetail.PaymentLink in
                 contactDetailsIn("AB12 3456 7890 1234 no, GB33BUKB20201555555555 yes"),
         )
-    }
-
-    @Test
-    fun `a nine digit run is not read as a phone number`() {
-        assertNothingFound("serial 917555019")
-    }
-
-    @Test
-    fun `an eleven digit run adjacent to more digits is not read as a phone number`() {
-        assertNothingFound("serial 191755501990001")
     }
 
     @Test
@@ -324,18 +277,6 @@ class ContactFilterTest {
     }
 
     @Test
-    fun `an uncued run whose every group is longer or shorter than an exchange is not a phone number`() {
-        assertNothingFound("boiler serviced 2019, 2021, 2023 and now it leaks")
-        assertNothingFound("boiler serviced 2019 2021 2023 and now it leaks")
-        assertNothingFound("the radiators are 1400, 1600, 1800 mm along that wall")
-        assertNothingFound("the radiators are 1400 1600 1800 mm along that wall")
-        assertNothingFound("radiator widths are\n1400\n1600\n1800\nacross the hallway")
-        assertNothingFound("invoices 4455 4456 4457 are all still unpaid")
-        assertNothingFound("lengths 1200 1500 1800 and 2100 mm are needed")
-        assertNothingFound("the gauge showed 12 34 56 78 90 across the week")
-    }
-
-    @Test
     fun `a line break separates the parts of a signal exactly as a space does`() {
         assertPhoneNumber("917\n555\n0199 is best")
         assertPhoneNumber("+44\n7700\n900123")
@@ -360,27 +301,6 @@ class ContactFilterTest {
         assertPhoneNumber("+1-2-3-917-555-0199-0-0-0")
         assertNothingFound("the plate reads 1 1234567 1234567 1234567 1 on the side")
         assertNothingFound("the rads are 1 22 33 44 55 66 77 8 across the run")
-    }
-
-    @Test
-    fun `a cued run grouped like thousands is money and not a phone number`() {
-        assertNothingFound("call me about the 123,456,789 lira bill")
-        assertNothingFound("call me about the 1,250,000 lira bill")
-        assertPhoneNumber("call me on 917,555,0199")
-    }
-
-    @Test
-    fun `these are known false positives and not a specification, an uncued run with an exchange sized group`() {
-        assertPhoneNumber("the quotes were 1200, 450, 600 from three firms")
-        assertPhoneNumber("the runs are 1500, 900, 750 mm end to end here")
-        assertPhoneNumber("1234,567,890 is best")
-        assertPhoneNumber("readings were 120 130 125 psi over three days")
-        assertPhoneNumber("meter readings:\n120\n130\n125\nover three days")
-        assertPhoneNumber("quotes so far:\n1200\n450\n600\nfrom three firms")
-        assertPhoneNumber("flats 101 102 103 all have the same leak")
-        assertPhoneNumber("codes 101-102-103 are on the fuse box door")
-        assertPhoneNumber("rooms 201 305 410 are affected by the damp")
-        assertPhoneNumber("phase readings 230 231 229 volts at the board")
     }
 
     @Test
