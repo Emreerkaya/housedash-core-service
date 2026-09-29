@@ -2,6 +2,8 @@ package com.housedash.domain.shared
 
 import com.housedash.domain.case.CaseError
 import com.housedash.domain.case.Description
+import com.tngtech.archunit.core.importer.ClassFileImporter
+import com.tngtech.archunit.core.importer.ImportOption
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -9,23 +11,27 @@ import kotlin.test.fail
 
 private const val CORPUS_RESOURCE = "i7-corpus.tsv"
 
-private const val ROWS_THE_CORPUS_HOLDS = 94
+private const val ROWS_THE_CORPUS_HOLDS = 140
 
-private const val LABELLED_ROWS_THE_CORPUS_HOLDS = 87
+private const val LABELLED_ROWS_THE_CORPUS_HOLDS = 130
 
-private const val DISAGREEMENTS_PINNED_AT_THIS_COMMIT = 21
+private const val DISAGREEMENTS_PINNED_AT_THIS_COMMIT = 47
 
-private const val ROWS_TOO_SHORT_TO_BE_A_DESCRIPTION = 61
+private const val ROWS_TOO_SHORT_TO_BE_A_DESCRIPTION = 62
 
-private const val COLUMNS_IN_A_ROW = 4
+private const val ROWS_THE_PLAIN_TEXT_RULE_REFUSES = 2
+
+private const val COLUMNS_IN_A_ROW = 5
 
 private const val WANT_COLUMN = 0
 
 private const val BEHAVIOUR_COLUMN = 1
 
-private const val INPUT_COLUMN = 2
+private const val KINDS_COLUMN = 2
 
-private const val NOTE_COLUMN = 3
+private const val INPUT_COLUMN = 3
+
+private const val NOTE_COLUMN = 4
 
 private const val REJECT = "REJECT"
 
@@ -39,17 +45,26 @@ private val BEHAVIOURS_THE_CORPUS_DEFINES = setOf(REJECT, ACCEPT)
 
 private val LINE_BREAK_ESCAPE = Regex("""\\n""")
 
+private val BETWEEN_KINDS = Regex("""\p{Zs}+""")
+
 private data class CorpusRow(
     val line: Int,
     val want: String,
     val behaviour: String,
+    val kinds: Set<String>,
     val input: String,
     val note: String,
 ) {
     val isLabelled: Boolean get() = want in BEHAVIOURS_THE_CORPUS_DEFINES
-
-    val isDisagreement: Boolean get() = isLabelled && want != behaviour
 }
+
+private fun kindsTheGuardCanReport(): Set<String> =
+    ClassFileImporter()
+        .withImportOption(ImportOption.DoNotIncludeTests())
+        .importPackages("com.housedash.domain.shared")
+        .filter { type -> type.rawInterfaces.any { it.simpleName == ContactDetail::class.simpleName } }
+        .map { it.simpleName }
+        .toSet()
 
 private fun corpusRows(): List<CorpusRow> {
     val stream =
@@ -58,7 +73,7 @@ private fun corpusRows(): List<CorpusRow> {
     val lines = stream.bufferedReader().use { it.readLines() }.filter { it.isNotEmpty() }
     val header = lines.first().split('\t')
     assertEquals(
-        listOf("want", "behaviour", "input", "note"),
+        listOf("want", "behaviour", "kinds", "input", "note"),
         header,
         "the corpus header changed shape, so the columns this test reads are no longer the columns it means",
     )
@@ -73,11 +88,14 @@ private fun corpusRows(): List<CorpusRow> {
             line = index + 2,
             want = columns[WANT_COLUMN],
             behaviour = columns[BEHAVIOUR_COLUMN],
+            kinds = columns[KINDS_COLUMN].split(BETWEEN_KINDS).filter { it.isNotBlank() }.toSet(),
             input = LINE_BREAK_ESCAPE.replace(columns[INPUT_COLUMN], "\n"),
             note = columns[NOTE_COLUMN],
         )
     }
 }
+
+private fun kindsFound(input: String): Set<String> = contactDetailsIn(input).mapNotNull { it::class.simpleName }.toSet()
 
 private fun behaviourOfTheGuard(input: String): String = if (contactDetailsIn(input).isEmpty()) ACCEPT else REJECT
 
@@ -122,48 +140,75 @@ class ContactFilterCorpusTest {
             "these corpus rows carry a label this test does not understand, so they were silently skipped:\n" +
                 unknownVocabulary.joinToString("\n") { "line ${it.line}: ${it.want}/${it.behaviour}" },
         )
-        rows.forEach { row ->
+    }
+
+    @Test
+    fun `every corpus row carries its provenance and a kinds column that agrees with its verdict`() {
+        corpusRows().forEach { row ->
             assertTrue(
                 row.note.isNotBlank(),
                 "corpus line ${row.line} carries no provenance, so nothing says which review or commit put it here",
+            )
+            assertEquals(
+                row.behaviour == REJECT,
+                row.kinds.isNotEmpty(),
+                "corpus line ${row.line} pins behaviour ${row.behaviour} beside kinds ${row.kinds}, and a " +
+                    "rejection is exactly a non-empty set of kinds",
             )
         }
     }
 
     @Test
-    fun `the guard behaves on every corpus row exactly as the corpus pins it`() {
+    fun `the guard finds the same kinds on every corpus row that the corpus pins`() {
         val rows = corpusRows()
         val flips =
             rows.mapNotNull { row ->
-                val measured = behaviourOfTheGuard(row.input)
-                if (measured == row.behaviour) {
+                val measured = kindsFound(row.input)
+                if (measured == row.kinds) {
                     null
                 } else {
-                    "line ${row.line}: pinned ${row.behaviour}, measured $measured, want ${row.want} " +
+                    "line ${row.line}: pinned ${row.kinds.ifEmpty { "nothing" }}, measured " +
+                        "${measured.ifEmpty { "nothing" }}, want ${row.want} " +
                         "[${row.note}] ${'"'}${row.input.replace("\n", "\\n")}${'"'}"
                 }
             }
         assertTrue(
             flips.isEmpty(),
-            "${flips.size} of ${rows.size} corpus rows no longer behave as pinned. Each line below is a flip to " +
-                "explain and then record in the corpus by hand; a flip nobody can explain is a change that is not " +
-                "ready:\n" + flips.joinToString("\n"),
+            "${flips.size} of ${rows.size} corpus rows no longer report the kinds pinned against them. A row " +
+                "rejected for a different kind than before is a change of behaviour that a reject-or-accept " +
+                "column cannot see, and the kind is what the Nester is shown. Each line below is a flip to " +
+                "explain and then record in the corpus by hand; a flip nobody can explain is a change that is " +
+                "not ready:\n" + flips.joinToString("\n"),
         )
     }
 
     @Test
-    fun `the corpus disagreement total is the one this commit claims`() {
+    fun `the corpus holds a row for every kind the guard can report`() {
         val rows = corpusRows()
-        val disagreements = rows.filter { it.isDisagreement }
+        val held = rows.flatMap { it.kinds }.toSet()
+        assertEquals(
+            kindsTheGuardCanReport(),
+            held,
+            "the guard can report kinds the corpus holds no row for, so those kinds have never produced a " +
+                "corpus delta on any commit and nothing would notice a row moving between them",
+        )
+    }
+
+    @Test
+    fun `the corpus disagreement total this commit claims is measured, not copied from a column`() {
+        val rows = corpusRows()
+        val disagreements = rows.filter { it.isLabelled && it.want != behaviourOfTheGuard(it.input) }
         val wrongly = disagreements.groupBy { it.want }
         assertEquals(
             DISAGREEMENTS_PINNED_AT_THIS_COMMIT,
             disagreements.size,
-            "the corpus now disagrees with the guard on ${disagreements.size} of " +
+            "the guard now disagrees with what the corpus wants on ${disagreements.size} of " +
                 "${rows.count { it.isLabelled }} labelled rows, not $DISAGREEMENTS_PINNED_AT_THIS_COMMIT: " +
                 "${wrongly[REJECT].orEmpty().size} wanted rejected and are accepted, " +
-                "${wrongly[ACCEPT].orEmpty().size} wanted accepted and are rejected. Move this number only " +
-                "together with the rows that moved it",
+                "${wrongly[ACCEPT].orEmpty().size} wanted accepted and are rejected. This total is measured " +
+                "by running the guard rather than by comparing two columns of the data file, so a code change " +
+                "moves it. Move this number only together with the rows that moved it:\n" +
+                disagreements.joinToString("\n") { "line ${it.line}: want ${it.want} [${it.note}]" },
         )
     }
 
@@ -199,26 +244,72 @@ class ContactFilterCorpusTest {
     }
 
     @Test
-    fun `the corpus states how many of its rows the aggregate cannot be given at all`() {
+    fun `the aggregate is handed a rejection of every kind, not only text that passes`() {
+        val rows = corpusRows()
+        val kindsThroughTheAggregate =
+            rows
+                .filter { behaviourOfTheAggregate(it.input) is ThroughTheAggregate.Measured }
+                .filter { it.behaviour == REJECT }
+                .flatMap { it.kinds }
+                .toSet()
+        assertEquals(
+            kindsTheGuardCanReport(),
+            kindsThroughTheAggregate,
+            "Description.of has never been given a rejection of every kind the guard reports, so the " +
+                "cross-check that exists to show the aggregate and the guard agree agrees mostly about text " +
+                "that passes. Every payment-brand row used to be shorter than a description may be, which is " +
+                "an artefact of writing rows as bare tokens rather than as sentences, and a long row costs no " +
+                "more than a short one",
+        )
+    }
+
+    @Test
+    fun `the corpus states how many of its rows the aggregate cannot be given at all, and why`() {
         val rows = corpusRows()
         val outOfReach =
-            rows.mapNotNull { row ->
-                (behaviourOfTheAggregate(row.input) as? ThroughTheAggregate.OutOfReach)?.let { row to it.reason }
-            }
+            rows
+                .mapNotNull { row ->
+                    (behaviourOfTheAggregate(row.input) as? ThroughTheAggregate.OutOfReach)?.reason
+                }.groupingBy { it }
+                .eachCount()
         assertEquals(
-            setOf(CaseError.DescriptionTooShort::class.simpleName),
-            outOfReach.map { it.second }.toSet(),
-            "a corpus row is unreachable through Description.of for a reason other than its length, so the corpus " +
-                "is measuring the guard on inputs the aggregate refuses for an unrelated cause: " +
-                "${outOfReach.map { it.second }.toSet()}",
+            mapOf(
+                CaseError.DescriptionTooShort::class.simpleName.orEmpty() to ROWS_TOO_SHORT_TO_BE_A_DESCRIPTION,
+                CaseError.DescriptionNotPlainText::class.simpleName.orEmpty() to ROWS_THE_PLAIN_TEXT_RULE_REFUSES,
+            ),
+            outOfReach,
+            "the reasons Description.of cannot be given a corpus row, and how many rows each one accounts " +
+                "for, are the ceiling of what this corpus can say about the aggregate, and moving either is a " +
+                "deliberate edit. A row refused for being too short exercises the guard alone. A row refused " +
+                "by the plain-text rule is refused at the write boundary by the layer beneath the filter, " +
+                "which is load-bearing for I7 and which no reject-or-accept column can carry, so it is " +
+                "counted here instead of being silently dropped",
         )
+    }
+
+    @Test
+    fun `the plain-text rule refuses a number grouped with invisible characters, which the guard accepts`() {
+        val notPlainText = ThroughTheAggregate.OutOfReach(CaseError.DescriptionNotPlainText::class.simpleName.orEmpty())
+        val refusedByThePlainTextRule = corpusRows().filter { behaviourOfTheAggregate(it.input) == notPlainText }
         assertEquals(
-            ROWS_TOO_SHORT_TO_BE_A_DESCRIPTION,
-            outOfReach.size,
-            "${outOfReach.size} of ${rows.size} corpus rows are shorter than a description may be, so the " +
-                "aggregate is measured on ${rows.size - outOfReach.size} of them and the rest exercise the guard " +
-                "alone. That is the ceiling of what this corpus can say about Description.of, and moving it is a " +
-                "deliberate edit",
+            ROWS_THE_PLAIN_TEXT_RULE_REFUSES,
+            refusedByThePlainTextRule.size,
+            "the corpus no longer holds a row that the plain-text rule refuses, so nothing here measures the " +
+                "layer the corpus's own analysis calls load-bearing for I7",
         )
+        refusedByThePlainTextRule.forEach { row ->
+            assertEquals(
+                ACCEPT,
+                behaviourOfTheGuard(row.input),
+                "line ${row.line}: the guard is supposed to accept this, because it strips format characters " +
+                    "and then sees exactly the bare run the corpus pins as an accepted gap. If the guard " +
+                    "starts rejecting it, the plain-text rule is no longer the only thing standing between " +
+                    "this text and a stored description",
+            )
+            assertTrue(
+                !isPlainText(row.input),
+                "line ${row.line}: this row exists because the plain-text rule refuses it; it no longer does",
+            )
+        }
     }
 }

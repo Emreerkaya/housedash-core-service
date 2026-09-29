@@ -1,95 +1,141 @@
-want	behaviour	input	note
-REJECT	REJECT	pay me at 917,555,0199	the comma bypass, closed this round
-REJECT	REJECT	917;555;0199	semicolon grouping
-REJECT	REJECT	917:555:0199	colon grouping
-REJECT	REJECT	917,\n555,\n0199	comma plus line break
-REJECT	REJECT	+44,7700,900123	the + prefix was briefly lost by the fix and restored
-REJECT	REJECT	917, 555, 0199	comma and space
-REJECT	REJECT	917\n555\n0199	line-break grouping
-REJECT	REJECT	917 555 019 9	3-3-3-1
-REJECT	REJECT	9 175 550 199	1-3-3-3
-REJECT	REJECT	bob@gmail.com	the plain email
-REJECT	REJECT	bob at gmail dot com	worded @ and worded dot
-REJECT	REJECT	bob{at}gmail.com	braced at
-REJECT	REJECT	bob@gmail․com	U+2024, folds to . under NFKD
-REJECT	REJECT	bob@gmail dot com	the email cross-product; plain ASCII, costs nothing to write
-REJECT	REJECT	bob@gmail·com	U+00B7, already declared a dot for payment brands in this file
-REJECT	REJECT	bob@gmail•com	U+2022, same
-REJECT	REJECT	bob@gmail‧com	U+2027, same
-REJECT	REJECT	bob@gmail・com	U+30FB, same
-REJECT	REJECT	bob@gmail｡com	U+FF61
-REJECT	REJECT	bob@gmail,com	comma as the label separator
-REJECT	REJECT	bob<at>gmail.com	{at} is caught, <at> is not
-REJECT	REJECT	bob[at]gmail·com	both axes at once
-REJECT	REJECT	Leaking tap under the sink, reach me 91-7555-0199 anytime	closed by widening the group before the line; dialable 9175550199 written 2-4-4
-REJECT	REJECT	Boiler wont fire, hit me up 21 2555 1234 before noon please	closed by widening the group before the line; dialable 2125551234 written 2-4-4
-REJECT	ACCEPT	2125-551234	inherited
-REJECT	ACCEPT	212-5551234	inherited
-REJECT	ACCEPT	2125.551234	inherited
-REJECT	ACCEPT	2125551-234	inherited
-REJECT	ACCEPT	91755 50199	inherited
-REJECT	ACCEPT	44-7700-900123	inherited; the + does the work the grouping rule cannot
-REJECT	ACCEPT	reach 1 2125 5512 34	inherited
-REJECT	ACCEPT	0044 20 7946 0958	inherited
-REJECT	ACCEPT	44 7700 900123	inherited
-REJECT	ACCEPT	917 555 01 99	a chosen gap, but dialable
-REJECT	ACCEPT	917,555,01,99	a chosen gap, but dialable
-REJECT	ACCEPT	(917) 555 01 99	a chosen gap, but dialable
-REJECT	ACCEPT	9175 5501 99	a chosen gap, but dialable
-REJECT	ACCEPT	917\n555\n01\n99	a chosen gap, but dialable
-REJECT	ACCEPT	917-555-01-99	a chosen gap, but dialable
-REJECT	REJECT	Revolut	closed by the brand list; D176 applies and the list states its gaps
-REJECT	ACCEPT	Wise	an ordinary English word as well as a brand; held only with its own host
-REJECT	ACCEPT	Chime	an ordinary English word as well as a brand; held only with its own host
-REJECT	REJECT	Strike or Wero	closed by the brand list; Wise and Chime stay out, an ordinary word each
-REJECT	REJECT	PayID	closed by the brand list; D176 applies and the list states its gaps
-REJECT	REJECT	Interac e-Transfer	closed by the brand list; D176 applies and the list states its gaps
-REJECT	REJECT	venmօ	U+0585 Armenian; closed by widening the confusable table to Armenian
-REJECT	ACCEPT	my bank is 31-27-00 12345678	a UK sort code and account, without the word sort
-REJECT	ACCEPT	wire it to 021000021 and 1234567890	a US routing and account number, no brand word
-ACCEPT	ACCEPT	boiler serviced 2019 2021 2023	closed by the three-digit rule
-ACCEPT	ACCEPT	radiator widths are\n1400\n1600\n1800	closed by the three-digit rule
-ACCEPT	ACCEPT	1400 1600 1800 mm	closed by the three-digit rule
-ACCEPT	ACCEPT	invoices 4455 4456 4457	closed by the three-digit rule
-ACCEPT	ACCEPT	2026-09-24, 350 Example Street	why comma is not in PHONE_SEPARATOR
-ACCEPT	ACCEPT	rated 10,000, 12,000 or 14,000 BTU	the [2,3,2,3] thousands-list regression; closed by the exchange-and-line rule
-ACCEPT	ACCEPT	quotes were 1,500, 2,300, 3,100	the [2,3,2,3] thousands-list regression; closed by the exchange-and-line rule
-ACCEPT	ACCEPT	12,000, 18,000	the [2,3,2,3] thousands-list regression; closed by the exchange-and-line rule
-ACCEPT	ACCEPT	1,000, 2,500, 10,000	the [2,3,2,3] thousands-list regression; closed by the exchange-and-line rule
-ACCEPT	ACCEPT	1,500; 2,300; 3,100	the [2,3,2,3] thousands-list regression; closed by the exchange-and-line rule
-ACCEPT	REJECT	100, 150, 2000 mm	the [2,3,2,3] thousands-list regression; ACCEPT at 458c134
-ACCEPT	ACCEPT	1,200, 1,800, 2,400	the [2,3,2,3] thousands-list regression; closed by the exchange-and-line rule
-ACCEPT	ACCEPT	12,000, 18,000, 24,000	the [2,3,2,3] thousands-list regression; closed by the exchange-and-line rule
-ACCEPT	ACCEPT	Radiator widths:\n300\n450\n600	the [2,3,2,3] thousands-list regression; closed by the exchange-and-line rule
-ACCEPT	ACCEPT	Radiator sizes are 600 1200 1800 mm across the flat here	three-digit metric run; was pinned as a known cost, closed by the exchange-and-line rule
-ACCEPT	ACCEPT	Worktop depths 300 600 900 mm and the sink is undermount	three-digit metric run; was pinned as a known cost, closed by the exchange-and-line rule
-ACCEPT	ACCEPT	Tile sizes 200 300 400 600 needed for the bathroom floor	three-digit metric run; was pinned as a known cost, closed by the exchange-and-line rule
-ACCEPT	ACCEPT	Loft insulation 100 200 270 mm depths quoted by the last	three-digit metric run; was pinned as a known cost, closed by the exchange-and-line rule
-ACCEPT	ACCEPT	Skirting lengths 240 300 360 cm needed across three rooms	three-digit metric run; was pinned as a known cost, closed by the exchange-and-line rule
-ACCEPT	ACCEPT	Previous quotes were 120 150 180 for the same tap repair	three-digit metric run; was pinned as a known cost, closed by the exchange-and-line rule
-ACCEPT	ACCEPT	Previous quotes were 1000, 300, 600 for the same repair	three-digit metric run; was pinned as a known cost, closed by the exchange-and-line rule
-ACCEPT	ACCEPT	Apartment 3B, 250 sq ft, quotes 120 150 180 for the work	three-digit metric run; was pinned as a known cost, closed by the exchange-and-line rule
-ACCEPT	ACCEPT	sizes 100, 150, 200 mm	clean at both SHAs and must stay so
-ACCEPT	ACCEPT	10,000 12,000 14,000 BTU	clean at both SHAs and must stay so
-ACCEPT	ACCEPT	120,000, 180,000	clean at both SHAs and must stay so
-ACCEPT	ACCEPT	12,000 and 18,000	clean at both SHAs and must stay so
-ACCEPT	ACCEPT	£12,000, £18,000	clean at both SHAs and must stay so
-ACCEPT	ACCEPT	3 @ 5.00 each for the washers	clean at both SHAs and must stay so
-ACCEPT	ACCEPT	mail the receipt to 10001-1234 instead	clean at both SHAs and must stay so
-ACCEPT	ACCEPT	½ ¾ ⅜ ⅝ ⅞	clean at both SHAs and must stay so
-ACCEPT	ACCEPT	1/2 3/4 3/8 5/8 7/8	clean at both SHAs and must stay so
-ACCEPT	ACCEPT	10001-1234	clean at both SHAs and must stay so
-ACCEPT	ACCEPT	2019, 2021, 2023	clean at both SHAs and must stay so
-ACCEPT	ACCEPT	$90-140	clean at both SHAs and must stay so
-ACCEPT	ACCEPT	9:30, 10:00, 11:30	clean at both SHAs and must stay so
-ACCEPT	ACCEPT	The old unit is rated 10,000, 12,000 or 14,000 BTU depending on the label I read	through Description.of; closed by the exchange-and-line rule
-ACCEPT	ACCEPT	Three quotes so far for the boiler swap: 12,000, 18,000 and 22,000 were mentioned	through Description.of; closed by the exchange-and-line rule
-REJECT	REJECT	Kitchen tap drips from the base, reach me on 917,555,0199 to arrange a look	through Description.of; the fix working
-REJECT	ACCEPT	Kitchen tap drips from the base, reach me on 917 555 01 99 to arrange a look	through Description.of; a chosen gap that is dialable
-QUESTION	ACCEPT	bob!@gmail.com	RFC-valid; deliverability is the open half, so unlabelled
-QUESTION	ACCEPT	bob'@gmail.com	RFC-valid; deliverability is the open half, so unlabelled
-QUESTION	ACCEPT	bob=@gmail.com	RFC-valid; deliverability is the open half, so unlabelled
-QUESTION	ACCEPT	bob?@gmail.com	RFC-valid; deliverability is the open half, so unlabelled
-QUESTION	ACCEPT	"bob smith"@gmail.com	RFC-valid; deliverability is the open half, so unlabelled
-QUESTION	ACCEPT	bob@203.0.113.5	RFC-valid; deliverability is the open half, so unlabelled
-QUESTION	ACCEPT	bob@[203.0.113.5]	RFC-valid; deliverability is the open half, so unlabelled
+want	behaviour	kinds	input	note
+REJECT	REJECT	PhoneNumber	pay me at 917,555,0199	the comma bypass, closed this round
+REJECT	REJECT	PhoneNumber	917;555;0199	semicolon grouping
+REJECT	REJECT	PhoneNumber	917:555:0199	colon grouping
+REJECT	REJECT	PhoneNumber	917,\n555,\n0199	comma plus line break
+REJECT	REJECT	PhoneNumber	+44,7700,900123	the + prefix was briefly lost by the fix and restored
+REJECT	REJECT	PhoneNumber	917, 555, 0199	comma and space
+REJECT	REJECT	PhoneNumber	917\n555\n0199	line-break grouping
+REJECT	REJECT	PhoneNumber	917 555 019 9	3-3-3-1
+REJECT	REJECT	PhoneNumber	9 175 550 199	1-3-3-3
+REJECT	REJECT	EmailAddress	bob@gmail.com	the plain email
+REJECT	REJECT	EmailAddress	bob at gmail dot com	worded @ and worded dot
+REJECT	REJECT	EmailAddress	bob{at}gmail.com	braced at
+REJECT	REJECT	EmailAddress	bob@gmail․com	U+2024, folds to . under NFKD
+REJECT	REJECT	EmailAddress	bob@gmail dot com	the email cross-product; plain ASCII, costs nothing to write
+REJECT	REJECT	EmailAddress	bob@gmail·com	U+00B7, already declared a dot for payment brands in this file
+REJECT	REJECT	EmailAddress	bob@gmail•com	U+2022, same
+REJECT	REJECT	EmailAddress	bob@gmail‧com	U+2027, same
+REJECT	REJECT	EmailAddress	bob@gmail・com	U+30FB, same
+REJECT	REJECT	EmailAddress	bob@gmail｡com	U+FF61
+REJECT	REJECT	EmailAddress	bob@gmail,com	comma as the label separator
+REJECT	REJECT	EmailAddress	bob<at>gmail.com	{at} is caught, <at> is not
+REJECT	REJECT	EmailAddress	bob[at]gmail·com	both axes at once
+REJECT	REJECT	PhoneNumber	Leaking tap under the sink, reach me 91-7555-0199 anytime	closed by widening the group before the line; dialable 9175550199 written 2-4-4
+REJECT	REJECT	PhoneNumber	Boiler wont fire, hit me up 21 2555 1234 before noon please	closed by widening the group before the line; dialable 2125551234 written 2-4-4
+REJECT	ACCEPT		2125-551234	inherited
+REJECT	ACCEPT		212-5551234	inherited
+REJECT	ACCEPT		2125.551234	inherited
+REJECT	ACCEPT		2125551-234	inherited
+REJECT	ACCEPT		91755 50199	inherited
+REJECT	ACCEPT		44-7700-900123	inherited; the + does the work the grouping rule cannot
+REJECT	ACCEPT		reach 1 2125 5512 34	inherited
+REJECT	ACCEPT		0044 20 7946 0958	inherited
+REJECT	ACCEPT		44 7700 900123	inherited
+REJECT	ACCEPT		917 555 01 99	a chosen gap, but dialable
+REJECT	ACCEPT		917,555,01,99	a chosen gap, but dialable
+REJECT	ACCEPT		(917) 555 01 99	a chosen gap, but dialable
+REJECT	ACCEPT		9175 5501 99	a chosen gap, but dialable
+REJECT	ACCEPT		917\n555\n01\n99	a chosen gap, but dialable
+REJECT	ACCEPT		917-555-01-99	a chosen gap, but dialable
+REJECT	REJECT	PaymentLink	Revolut	closed by the brand list; D176 applies and the list states its gaps
+REJECT	ACCEPT		Wise	an ordinary English word as well as a brand; held only with its own host
+REJECT	ACCEPT		Chime	an ordinary English word as well as a brand; held only with its own host
+REJECT	REJECT	PaymentLink	Strike or Wero	closed by the brand list; Wise and Chime stay out, an ordinary word each
+REJECT	REJECT	PaymentLink	PayID	closed by the brand list; D176 applies and the list states its gaps
+REJECT	REJECT	PaymentLink	Interac e-Transfer	closed by the brand list; D176 applies and the list states its gaps
+REJECT	REJECT	PaymentLink	venmօ	U+0585 Armenian; closed by widening the confusable table to Armenian
+REJECT	ACCEPT		my bank is 31-27-00 12345678	a UK sort code and account, without the word sort
+REJECT	ACCEPT		wire it to 021000021 and 1234567890	a US routing and account number, no brand word
+ACCEPT	ACCEPT		boiler serviced 2019 2021 2023	closed by the three-digit rule
+ACCEPT	ACCEPT		radiator widths are\n1400\n1600\n1800	closed by the three-digit rule
+ACCEPT	ACCEPT		1400 1600 1800 mm	closed by the three-digit rule
+ACCEPT	ACCEPT		invoices 4455 4456 4457	closed by the three-digit rule
+ACCEPT	ACCEPT		2026-09-24, 350 Example Street	why comma is not in PHONE_SEPARATOR
+ACCEPT	ACCEPT		rated 10,000, 12,000 or 14,000 BTU	the [2,3,2,3] thousands-list regression; closed by the exchange-and-line rule
+ACCEPT	ACCEPT		quotes were 1,500, 2,300, 3,100	the [2,3,2,3] thousands-list regression; closed by the exchange-and-line rule
+ACCEPT	ACCEPT		12,000, 18,000	the [2,3,2,3] thousands-list regression; closed by the exchange-and-line rule
+ACCEPT	ACCEPT		1,000, 2,500, 10,000	the [2,3,2,3] thousands-list regression; closed by the exchange-and-line rule
+ACCEPT	ACCEPT		1,500; 2,300; 3,100	the [2,3,2,3] thousands-list regression; closed by the exchange-and-line rule
+ACCEPT	REJECT	PhoneNumber	100, 150, 2000 mm	the [2,3,2,3] thousands-list regression; ACCEPT at 458c134
+ACCEPT	ACCEPT		1,200, 1,800, 2,400	the [2,3,2,3] thousands-list regression; closed by the exchange-and-line rule
+ACCEPT	ACCEPT		12,000, 18,000, 24,000	the [2,3,2,3] thousands-list regression; closed by the exchange-and-line rule
+ACCEPT	ACCEPT		Radiator widths:\n300\n450\n600	the [2,3,2,3] thousands-list regression; closed by the exchange-and-line rule
+ACCEPT	ACCEPT		Radiator sizes are 600 1200 1800 mm across the flat here	three-digit metric run; was pinned as a known cost, closed by the exchange-and-line rule
+ACCEPT	ACCEPT		Worktop depths 300 600 900 mm and the sink is undermount	three-digit metric run; was pinned as a known cost, closed by the exchange-and-line rule
+ACCEPT	ACCEPT		Tile sizes 200 300 400 600 needed for the bathroom floor	three-digit metric run; was pinned as a known cost, closed by the exchange-and-line rule
+ACCEPT	ACCEPT		Loft insulation 100 200 270 mm depths quoted by the last	three-digit metric run; was pinned as a known cost, closed by the exchange-and-line rule
+ACCEPT	ACCEPT		Skirting lengths 240 300 360 cm needed across three rooms	three-digit metric run; was pinned as a known cost, closed by the exchange-and-line rule
+ACCEPT	ACCEPT		Previous quotes were 120 150 180 for the same tap repair	three-digit metric run; was pinned as a known cost, closed by the exchange-and-line rule
+ACCEPT	ACCEPT		Previous quotes were 1000, 300, 600 for the same repair	three-digit metric run; was pinned as a known cost, closed by the exchange-and-line rule
+ACCEPT	ACCEPT		Apartment 3B, 250 sq ft, quotes 120 150 180 for the work	three-digit metric run; was pinned as a known cost, closed by the exchange-and-line rule
+ACCEPT	ACCEPT		sizes 100, 150, 200 mm	clean at both SHAs and must stay so
+ACCEPT	ACCEPT		10,000 12,000 14,000 BTU	clean at both SHAs and must stay so
+ACCEPT	ACCEPT		120,000, 180,000	clean at both SHAs and must stay so
+ACCEPT	ACCEPT		12,000 and 18,000	clean at both SHAs and must stay so
+ACCEPT	ACCEPT		£12,000, £18,000	clean at both SHAs and must stay so
+ACCEPT	ACCEPT		3 @ 5.00 each for the washers	clean at both SHAs and must stay so
+ACCEPT	ACCEPT		mail the receipt to 10001-1234 instead	clean at both SHAs and must stay so
+ACCEPT	ACCEPT		½ ¾ ⅜ ⅝ ⅞	clean at both SHAs and must stay so
+ACCEPT	ACCEPT		1/2 3/4 3/8 5/8 7/8	clean at both SHAs and must stay so
+ACCEPT	ACCEPT		10001-1234	clean at both SHAs and must stay so
+ACCEPT	ACCEPT		2019, 2021, 2023	clean at both SHAs and must stay so
+ACCEPT	ACCEPT		$90-140	clean at both SHAs and must stay so
+ACCEPT	ACCEPT		9:30, 10:00, 11:30	clean at both SHAs and must stay so
+ACCEPT	ACCEPT		The old unit is rated 10,000, 12,000 or 14,000 BTU depending on the label I read	through Description.of; closed by the exchange-and-line rule
+ACCEPT	ACCEPT		Three quotes so far for the boiler swap: 12,000, 18,000 and 22,000 were mentioned	through Description.of; closed by the exchange-and-line rule
+REJECT	REJECT	PhoneNumber	Kitchen tap drips from the base, reach me on 917,555,0199 to arrange a look	through Description.of; the fix working
+REJECT	ACCEPT		Kitchen tap drips from the base, reach me on 917 555 01 99 to arrange a look	through Description.of; a chosen gap that is dialable
+QUESTION	ACCEPT		bob!@gmail.com	RFC-valid; deliverability is the open half, so unlabelled
+QUESTION	ACCEPT		bob'@gmail.com	RFC-valid; deliverability is the open half, so unlabelled
+QUESTION	ACCEPT		bob=@gmail.com	RFC-valid; deliverability is the open half, so unlabelled
+QUESTION	ACCEPT		bob?@gmail.com	RFC-valid; deliverability is the open half, so unlabelled
+QUESTION	ACCEPT		"bob smith"@gmail.com	RFC-valid; deliverability is the open half, so unlabelled
+QUESTION	ACCEPT		bob@203.0.113.5	RFC-valid; deliverability is the open half, so unlabelled
+QUESTION	ACCEPT		bob@[203.0.113.5]	RFC-valid; deliverability is the open half, so unlabelled
+REJECT	ACCEPT		Kitchen tap drips from the base, reach me on 9175550199 and I will send photos	a bare keypad-typed run after an unlisted verb; the most ordinary way a number is written, and open at every SHA
+REJECT	ACCEPT		Kitchen tap drips from the base, email me at bob@gmail and I will send photos	an email with no top-level label; reconstructible, and the suite wrongly asserts the class is not an email
+REJECT	ACCEPT		Kitchen tap drips from the base, email me at bob at gmail com and I will send photos	the worded form of the same, no top-level label
+REJECT	ACCEPT		bit.ly/bobplumber	the URL class, stated by one shortener only
+REJECT	ACCEPT		Kitchen tap drips from the base, book me at calendly.com/bobsmith any evening	the URL class; a booking page is a channel around the platform
+REJECT	ACCEPT		Kitchen tap drips from the base, book at https://bobsplumbing.com/book instead	the URL class, explicit scheme
+REJECT	ACCEPT		Kitchen tap drips from the base, see www.bobsplumbing.com for my rates	the URL class, www form
+REJECT	ACCEPT		Kitchen tap drips from the base, my page is linktr.ee/bobplumber for everything	the URL class, link aggregator
+REJECT	ACCEPT		Kitchen tap drips from the base, my gmail is bobsmith99 if that helps	a mailbox named without a domain
+REJECT	ACCEPT		Kitchen tap drips from the base, my telegram is @bobplumber for photos	a messaging handle the arms do not read
+REJECT	ACCEPT		Kitchen tap drips from the base, reach me on 917 5550 199 this week	an uncued 3-4-3 dialable grouping
+REJECT	ACCEPT		Kitchen tap drips from the base, reach me on 917 55 50199 this week	an uncued 3-2-5 dialable grouping
+REJECT	ACCEPT		Kitchen tap drips from the base, reach me on 19175550199 this week	an uncued eleven-digit run with a country prefix
+REJECT	ACCEPT		Kitchen tap drips from the base, reach me on 917x555x0199 this week	a letter separator between groups
+QUESTION	REJECT	PaymentLink	I paid with apple pay last time and it went through fine	ordinary payment history, rejected as a PaymentLink; whether this is a false positive is an owner decision
+QUESTION	ACCEPT		I am at 350 E 62nd St #4B, buzzer 12, come by any evening	whether a street address is a contact detail under I7; the product gives the exact address after booking
+QUESTION	ACCEPT		I can pay you directly in cash outside the app if that is easier	not a contact detail, but an explicit offer to leave the platform; I7's wording covers the channel, not only the address
+REJECT	ACCEPT		Water pours through the ceiling on the landing, 917。555。0199 is my cell	U+3002 was added to the email label separator this round and not to PHONE_SEPARATOR, same file, same commit
+REJECT	ACCEPT		Water pours through the ceiling on the landing, 917｡555｡0199 is my cell	U+FF61 folds to U+3002, which PHONE_SEPARATOR does not list
+REJECT	ACCEPT		Water pours through the ceiling below, my cell is ❹❶❼ ❺❺❺ ❶❹❹	U+2776 dingbat digits: category So, no NFKD decomposition, not \p{Nd}, permitted by isPlainText
+REJECT	ACCEPT		Water pours through the ceiling below, my cell is ⓽⓵⓻ ⓹⓹⓹ ⓵⓽⓽	U+24F5 double-circled digits, same reason
+REJECT	ACCEPT		Water pours through the ceiling below, 020 7946 0958 is my landline	a UK landline; the uncued arm's dialable is exactly ten digits while PHONE_DIGIT_COUNT claims 9..15
+REJECT	REJECT	PhoneNumber	Water pours through the ceiling below, 07700 900 123 is my number	a UK mobile, eleven digits
+REJECT	REJECT	PhoneNumber	Water pours through the ceiling below, 1917 555 0199 is my cell	an eleven-digit domestic run with a country prefix and no plus
+REJECT	REJECT	PhoneNumber	Water pours through the ceiling below, 001 212 555 1234 is my cell	an international prefix written without a plus
+REJECT	ACCEPT		Water pours through the ceiling below, my cell is 917*555*0199	a separator PHONE_SEPARATOR does not list; ten more of the same shape pass
+REJECT	ACCEPT		Water pours through the ceiling below, write to bob@mail,ru for the photos	the comma-for-a-dot arm is restricted to a common-TLD list, and the list is unmeasured
+REJECT	ACCEPT		Water pours through the ceiling below, write to bobby at yahoo·com about it	the worded-at arm kept the narrow dot vocabulary the domain arm just widened
+ACCEPT	REJECT	PhoneNumber	boiler serial 1 234 567 890 is on the plate behind the panel	space is the SI thousands separator; the bare form is accepted and pinned, this one is not
+ACCEPT	REJECT	PhoneNumber	We counted 8 200 300 400 mm lengths of skirting in the hall here	a size list with a count in front; the same list without the count is accepted
+ACCEPT	REJECT	PhoneNumber	the quote came to 1 250 000 000 lira for the whole block here	a large sum written with SI separators
+REJECT	REJECT	EmailAddress	Kitchen tap drips from the base, email me at bob@gmail.com for photos	an EmailAddress at a length that reaches Description.of
+REJECT	REJECT	PaymentLink	Kitchen tap drips from the base, pay me on cash.app/$bobplumber when done	a PaymentLink at a length that reaches Description.of; every payment-brand row before this one was under twenty characters
+REJECT	REJECT	PaymentLink	Kitchen tap drips from the base, my paypal is bobplumber if that is easier	a payment brand at a length that reaches Description.of
+REJECT	REJECT	PaymentLink	Kitchen tap drips from the base, send it by revolut once the work is done	a bare payment brand at a length that reaches Description.of
+REJECT	ACCEPT		Water pours through the ceiling below, my sort code is 31-27-00 for this	sort code written with a copula before the digits; the sort-code arm allows a colon and a space between the word and the number and not the word is, so this is a gap the shorter row beside it does not show
+REJECT	REJECT	PaymentLink	Kitchen tap drips from the base, wire it to GB82WEST12345698765432 today	a check-digit-valid IBAN at a length that reaches Description.of
+REJECT	REJECT	PaymentLink	Kitchen tap drips, send to 0x52908400098527886E0F7030069857D2E4169EE7 now	an EIP-55 address at a length that reaches Description.of
+REJECT	REJECT	MessagingHandle	Kitchen tap drips from the base, message me on t.me/bobplumber for photos	a MessagingHandle; the corpus held no row of this kind at all, so one of the four kinds had never produced a delta
+REJECT	REJECT	MessagingHandle	Water pours through the ceiling below, find me at wa.me/447700900123 now	a MessagingHandle written as a click-to-chat link
+REJECT	REJECT	MessagingHandle	Kitchen tap drips from the base, dm me at instagram.com/bobplumber now	a MessagingHandle on a social host
+REJECT	REJECT	MessagingHandle	Kitchen tap drips from the base, my whatsapp is the best way to reach me	a messaging app named with no handle beside it
+REJECT	REJECT	EmailAddress PhoneNumber	Kitchen tap drips, call me on 917,555,0199 or email bob@gmail.com today	two kinds in one description, so the kinds column carries a set and not a single value
+ACCEPT	ACCEPT		Kitchen tap drips from the base, reach me on 917‍555‍0199 today	U+200D between digit groups; the guard strips it as a format character and then behaves exactly as it does on the bare run, which is the accepted gap above. The layer that refuses this is the plain-text rule, asserted by name because no corpus column can carry it
+ACCEPT	ACCEPT		Kitchen tap drips from the base, reach me on 917​555​0199 today	U+200B between digit groups, refused by the plain-text rule rather than by the filter, and the guard is right to accept what it is shown
+REJECT	REJECT	PaymentLink	Water pours through the ceiling below, sort code 31-27-00 on the statement	bank coordinates named by their own word, at a length that reaches Description.of
