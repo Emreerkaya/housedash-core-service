@@ -40,8 +40,21 @@ has seen and small enough that the scan stays in microseconds.
 Each is a product decision, so each is written here rather than inferred from the
 tests that enforce it, and each is bound to its declaration by a test that reads
 both and fails when they part. The binding is the same mechanism ADR-0005 uses,
-and it now covers every constant the domain publishes: a new one arrives as a
-failure naming it, not as a line nobody reviews.
+and its extent is this: it reads every `const val` the domain declares whose
+name is upper case, whatever its value is spelled as, and it requires every one
+the domain publishes to be bound to a record here, to defer to another constant
+that is, or to be named in the test as deciding nothing a Nester sees. A new
+published constant arrives as a failure naming it, not as a line nobody reviews.
+
+What it does not do is bind the constants the domain keeps private. There are
+forty-nine of them and most are arithmetic, a name for a small literal or a
+fragment of a pattern, so forty-seven are pinned as a set of names rather than
+excused one by one: adding one
+reddens the same test with its name in the failure, and whoever adds it decides
+then whether it is a product decision. Two of them are product decisions with records of
+their own, ADR-0005 and ADR-0007, and both are bound by value through the same
+test, which is how a private constant can be bound without the derived set
+seeing it.
 
 ## Consequences
 
