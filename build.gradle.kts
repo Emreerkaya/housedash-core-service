@@ -127,15 +127,23 @@ tasks.register("verifyIntegrationTestSourceSetNotEmpty") {
 tasks.register("verifyNoSuppressions") {
     group = "verification"
     val kotlinSource = files(sourceSets.flatMap { it.allSource.matching { include("**/*.kt") } })
-    val forbidden = listOf("@Suppress", "@file:Suppress", "detekt-disable", "ktlint-disable")
+    val forbidden =
+        listOf(
+            """@(?:[A-Za-z]+\s*:\s*)?(?:kotlin\s*\.\s*)?Suppress""",
+            """import\s+kotlin\s*\.\s*Suppress""",
+            """detekt-disable""",
+            """ktlint-disable""",
+        ).map { Regex(it) }
     inputs.files(kotlinSource)
     outputs.file(layout.buildDirectory.file("reports/suppressions/verified.txt"))
     doLast {
         val offences = mutableListOf<String>()
         for (file in kotlinSource.files) {
-            for ((index, line) in file.readLines().withIndex()) {
-                if (forbidden.any { line.contains(it) }) {
-                    offences.add("${file.path}:${index + 1}: ${line.trim()}")
+            val text = file.readText()
+            for (pattern in forbidden) {
+                for (hit in pattern.findAll(text)) {
+                    val line = text.take(hit.range.first).count { it == '\n' } + 1
+                    offences.add("${file.path}:$line: ${hit.value.replace("\n", " ")}")
                 }
             }
         }
