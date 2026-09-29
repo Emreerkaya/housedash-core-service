@@ -287,6 +287,8 @@ internal object TablesTheGuardReads {
         )
 }
 
+private const val SEPARATOR_BETWEEN_TWO_GROUPS = TablesTheGuardReads.SEPARATOR_BETWEEN_TWO_DIGIT_GROUPS
+
 private val CONFUSABLES_FOLDED_TO_LATIN = TablesTheGuardReads.confusablesFoldedToLatin
 
 private val LINE_BREAKS_A_DESCRIPTION_BOX_CREATES = TablesTheGuardReads.lineBreaksADescriptionBoxCreates
@@ -397,7 +399,7 @@ private val CASH_TAG = Regex("""(?<![A-Za-z0-9])\$[A-Za-z][A-Za-z0-9_]{1,30}+"""
 private val SORT_CODE =
     Regex(
         """(?i)\bsort\p{Zs}?+(?:code)?+\p{Zs}?+:?+\p{Zs}?+""" +
-            """\p{Nd}{2}[\p{Pd}\p{Zs}.]?+\p{Nd}{2}[\p{Pd}\p{Zs}.]?+\p{Nd}{2}(?!\p{Nd})""",
+            """\p{Nd}{2}$SEPARATOR_BETWEEN_TWO_GROUPS?+\p{Nd}{2}$SEPARATOR_BETWEEN_TWO_GROUPS?+\p{Nd}{2}(?!\p{Nd})""",
     )
 
 private val BANK_ACCOUNT =
@@ -409,7 +411,8 @@ private val CRYPTO_ADDRESS =
 private val IBAN_CANDIDATE =
     Regex(
         """\b[A-Za-z]{2}[0-9]{2}(?:[A-Za-z0-9]{11,30}+|""" +
-            """(?:[\p{Zs}\p{Pd}][A-Za-z0-9]{4}){2,7}+(?:[\p{Zs}\p{Pd}][A-Za-z0-9]{1,3})?+)""",
+            """(?:$SEPARATOR_BETWEEN_TWO_GROUPS[A-Za-z0-9]{4}){2,7}+""" +
+            """(?:$SEPARATOR_BETWEEN_TWO_GROUPS[A-Za-z0-9]{1,3})?+)""",
     )
 
 private val PAYMENT_PATTERNS = listOf(PAYMENT_SERVICE, CASH_TAG, SORT_CODE, BANK_ACCOUNT, CRYPTO_ADDRESS)
