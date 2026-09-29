@@ -329,4 +329,20 @@ class ContactFilterTest {
             "look me up, the business name is bobs plumbing",
         ).forEach(::assertNothingFound)
     }
+
+    @Test
+    fun `a spaced run of digits is only read as a phone number when every group is a single digit`() {
+        assertPhoneNumber("9 1 7 5 5 5 0 1 9 9")
+        assertNothingFound("the rads are 9 1 7 5 5 5 0 1 99 across the run")
+    }
+
+    @Test
+    fun `an iban shaped code with a failing checksum is not an iban`() {
+        assertNothingFound("the part code is GB33BUKB20201555555556 on the plate")
+    }
+
+    @Test
+    fun `a grouped code too short to be an iban is left alone`() {
+        assertNothingFound("the boiler plate reads GB33 BUKB 2020 is stamped by the door")
+    }
 }
