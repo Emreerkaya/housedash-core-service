@@ -132,7 +132,7 @@ class NumberShapeFilterTest {
             "the pipe is 3\u00BD inch across the joint",
             "the flue is 600 mm long and the gap is 870 mm",
             "a 2015 model that has leaked for 14 days",
-            "350 East 62nd Street, apartment 4B, third floor walk up",
+            "350 Example Street, apartment 4B, third floor walk up",
             "the manual is at vaillant.co.uk if you want to read it",
         ).forEach(::assertNothingFound)
     }

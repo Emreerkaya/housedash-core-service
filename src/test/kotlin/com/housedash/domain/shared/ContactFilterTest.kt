@@ -246,6 +246,24 @@ class ContactFilterTest {
     }
 
     @Test
+    fun `the guard refuses text longer than it reads rather than running the filter over it`() {
+        val overLong = "kitchen tap drips from the base ".repeat(100)
+        assertTrue(characterCount(overLong) > MOST_CHARACTERS_THE_GUARD_READS)
+        val flaw = assertIs<Outcome.Err<TextFlaw>>(withoutContactDetails(overLong)).error
+        assertEquals(TextFlaw.TooLong(characterCount(overLong), MOST_CHARACTERS_THE_GUARD_READS), flaw)
+        val atTheCap = "a".repeat(MOST_CHARACTERS_THE_GUARD_READS)
+        assertEquals(Outcome.Ok(atTheCap), withoutContactDetails(atTheCap))
+    }
+
+    @Test
+    fun `contactDetailsIn is the unbounded primitive and the cap belongs to the guard above it`() {
+        val overLong = "kitchen tap drips from the base. ".repeat(100) + "reach me on 917-555-0199"
+        assertTrue(characterCount(overLong) > MOST_CHARACTERS_THE_GUARD_READS)
+        assertEquals(setOf(ContactDetail.PhoneNumber), contactDetailsIn(overLong))
+        assertIs<Outcome.Err<TextFlaw>>(withoutContactDetails(overLong))
+    }
+
+    @Test
     fun `reports every kind it finds`() {
         assertEquals(
             setOf(
@@ -263,7 +281,7 @@ class ContactFilterTest {
         listOf(
             "kitchen tap drips from the base",
             "boiler pressure drops to half a bar overnight, a 2015 model",
-            "flat 4B at 350 East 62nd Street, bedroom 2 radiator is cold",
+            "flat 4B at 350 Example Street, bedroom 2 radiator is cold",
             "the fuse blew on 2026-09-24 and blew again the next day",
             "the last quote was \$250 and the one before was \$180",
             "the pipe is 3/4 inch and weeping at the joint",
@@ -497,7 +515,7 @@ class ContactFilterTest {
             "the invoice total was 1,250.00 and 1,234 parts",
             "the run cost 123,456,789 lira all in",
             "logged at 12:30:45 2026-09-24 by the engineer",
-            "the fuse blew on 2026-09-24, 350 East 62nd Street",
+            "the fuse blew on 2026-09-24, 350 Example Street",
             "job 4455 on 2026-09-24 needs 2 washers 12 mm",
             "steps \u2474\u2475\u2476\u2477\u2478\u2479\u247A\u247B\u247C",
             "serial number 1234567890 is on the plate behind the panel",

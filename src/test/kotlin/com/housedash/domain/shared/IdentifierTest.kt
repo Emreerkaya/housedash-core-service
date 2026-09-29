@@ -46,7 +46,7 @@ class IdentifierTest {
     }
 
     @Test
-    fun `a bare identifier with a caller-chosen shape cannot be built reflectively`() {
+    fun `the base identifier is abstract, so reflection has nothing to instantiate before access matters`() {
         val constructor = Identifier::class.java.declaredConstructors.single()
         assertFailsWith<InstantiationException> { constructor.newInstance("id_1", IdentifierShape("", 64)) }
     }

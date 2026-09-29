@@ -2,6 +2,8 @@ package com.housedash.domain.shared
 
 import java.text.Normalizer
 
+const val MOST_CHARACTERS_THE_GUARD_READS = 2000
+
 sealed interface ContactDetail {
     data object PhoneNumber : ContactDetail
 
@@ -348,6 +350,10 @@ fun contactDetailsIn(text: String): Set<ContactDetail> {
 }
 
 fun withoutContactDetails(text: String): Outcome<String, TextFlaw> {
+    val characters = characterCount(text)
+    if (characters > MOST_CHARACTERS_THE_GUARD_READS) {
+        return Outcome.Err(TextFlaw.TooLong(characters, MOST_CHARACTERS_THE_GUARD_READS))
+    }
     val kinds = contactDetailsIn(text)
     return if (kinds.isEmpty()) Outcome.Ok(text) else Outcome.Err(TextFlaw.ContactDetails(kinds))
 }

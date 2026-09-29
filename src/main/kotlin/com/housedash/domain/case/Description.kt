@@ -1,6 +1,7 @@
 package com.housedash.domain.case
 
 import com.housedash.domain.shared.FreeTextRule
+import com.housedash.domain.shared.MOST_CHARACTERS_THE_GUARD_READS
 import com.housedash.domain.shared.Outcome
 import com.housedash.domain.shared.TextFlaw
 import com.housedash.domain.shared.withoutContactDetails
@@ -18,7 +19,7 @@ class Description private constructor(
 
     companion object {
         const val MIN_LENGTH = 20
-        const val MAX_LENGTH = 2000
+        const val MAX_LENGTH = MOST_CHARACTERS_THE_GUARD_READS
 
         private val RULE = FreeTextRule(MIN_LENGTH, MAX_LENGTH)
 
