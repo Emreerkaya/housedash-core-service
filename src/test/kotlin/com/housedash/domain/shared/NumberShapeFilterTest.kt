@@ -103,6 +103,29 @@ class NumberShapeFilterTest {
     }
 
     @Test
+    fun `a separator holding two marks is read as one holding one`() {
+        val readSingly =
+            MARKS_A_NUMBER_MAY_BE_WRITTEN_WITH.filter { isFound(spelledOneDigitTo(listOf(it.toString()))) }
+        val disagreeing =
+            readSingly.flatMap { first ->
+                readSingly
+                    .map { second -> listOf("$first$second") }
+                    .filterNot { isFound(spelledOneDigitTo(it)) }
+                    .map { spelling(it) }
+            }
+        assertEquals(
+            emptyList(),
+            disagreeing,
+            "how many marks one separator holds is decided once for every arm, at one to eight, so the arm " +
+                "that reads a run spread one digit to a separator must not decide it again. It did: it counted " +
+                "the marks in each separator and refused more than one, so 9--1--7--5--5--5--0--1--9--9 was " +
+                "stored while 9-1-7-5-5-5-0-1-9-9 was refused. The pairs are drawn from the marks this same " +
+                "guard reads singly rather than listed. These two-mark separators are not read: " +
+                disagreeing.joinToString(", "),
+        )
+    }
+
+    @Test
     fun `spaces in a mixed spelling group the run, and a grouping no number uses stays an open gap`() {
         assertPhoneNumber("9,1,7 5,5,5 0,1,9,9 is my cell, please ring about the radiator")
         assertPhoneNumber("9.1.7 5.5.5 0.1.9.9 is my cell, please ring about the radiator")
