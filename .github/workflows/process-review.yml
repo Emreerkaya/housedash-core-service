@@ -6,22 +6,84 @@ on:
     types: [submitted, edited, dismissed]
 
 concurrency:
-  group: review-${{ github.event.pull_request.number }}-${{ github.event_name }}
-  cancel-in-progress: false
+  group: review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
-  agent-review:
+  review-gate:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       pull-requests: read
+      checks: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      CHECK_NAME: agent-review
     steps:
       - uses: actions/checkout@v7
-      - run: scripts/agent-review.sh
+
+      - id: gate
+        run: |
+          log="${RUNNER_TEMP}/agent-review.log"
+          set +e
+          scripts/agent-review.sh > "$log" 2>&1
+          status=$?
+          set -e
+          cat "$log"
+          case "$status" in
+            0)
+              conclusion=success
+              title='every required dimension is clean at this head'
+              ;;
+            3)
+              conclusion=neutral
+              title=$(grep -m1 '^pending: ' "$log" | cut -c1-255)
+              title=${title:-'waiting for reviews that have not posted at this head'}
+              ;;
+            *)
+              conclusion=failure
+              title='agent-review refused this head'
+              ;;
+          esac
+          {
+            printf 'status=%s\n' "$status"
+            printf 'conclusion=%s\n' "$conclusion"
+            printf 'title=%s\n' "$title"
+          } >> "$GITHUB_OUTPUT"
+
+      - if: always() && steps.gate.conclusion != 'skipped'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          CONCLUSION: ${{ steps.gate.outputs.conclusion }}
+          TITLE: ${{ steps.gate.outputs.title }}
+        run: |
+          log="${RUNNER_TEMP}/agent-review.log"
+          [ -f "$log" ] || printf 'the gate produced no log\n' > "$log"
+          payload=$(jq -n \
+            --arg name "$CHECK_NAME" \
+            --arg head_sha "$HEAD_SHA" \
+            --arg conclusion "${CONCLUSION:-failure}" \
+            --arg title "${TITLE:-agent-review did not report}" \
+            --arg details_url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+            --rawfile log "$log" \
+            '{name: $name, head_sha: $head_sha, status: "completed", conclusion: $conclusion,
+              details_url: $details_url,
+              output: {title: $title, summary: ("```\n" + $log + "\n```")}}')
+          existing=$(gh api \
+            "repos/${GITHUB_REPOSITORY}/commits/${HEAD_SHA}/check-runs?check_name=${CHECK_NAME}&per_page=100" \
+            --jq '[.check_runs[].id] | max // empty')
+          if [ -n "$existing" ]; then
+            printf '%s' "$payload" | jq 'del(.head_sha)' \
+              | gh api --method PATCH "repos/${GITHUB_REPOSITORY}/check-runs/${existing}" --input -
+          else
+            printf '%s' "$payload" | gh api --method POST "repos/${GITHUB_REPOSITORY}/check-runs" --input -
+          fi
+
+      - if: steps.gate.outputs.conclusion == 'failure'
+        env:
+          GATE_STATUS: ${{ steps.gate.outputs.status }}
+        run: exit "$GATE_STATUS"
