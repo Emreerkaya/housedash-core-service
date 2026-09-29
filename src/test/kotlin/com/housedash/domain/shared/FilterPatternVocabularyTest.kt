@@ -20,7 +20,7 @@ private const val NAME_GROUP = 2
 
 private const val REST_OF_THE_OPENING_LINE_GROUP = 3
 
-private const val PATTERNS_THE_FILTER_DECLARES = 31
+private const val PATTERNS_THE_FILTER_DECLARES = 30
 
 private const val OPENS_A_STRING = "\""
 
