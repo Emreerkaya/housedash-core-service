@@ -20,6 +20,7 @@ import com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses
 import com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noFields
 import com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noMethods
 import com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -86,6 +87,11 @@ class LayeringTest {
             "a stored-row type of a bounded context, named by the Row suffix its mapper reads",
         ) { candidate -> inBoundedContext(candidate) && candidate.simpleName.endsWith("Row") }
 
+    private val mintPermission: (JavaClass, JavaClass, String) -> Boolean = { caller, owner, route ->
+        caller.packageName == owner.packageName ||
+            route in ROUTES_ENTITLED_BY_PACKAGE[caller.packageName].orEmpty()
+    }
+
     private val reachableFromOutside: (Set<JavaModifier>) -> Boolean = { modifiers ->
         JavaModifier.PRIVATE !in modifiers && JavaModifier.SYNTHETIC !in modifiers
     }
@@ -131,6 +137,40 @@ class LayeringTest {
             .map { it.name }
             .toSet()
 
+    private val watchedMintRoutes: Set<String> = mintTargetsByProducedType.values.flatten().toSet()
+
+    private val mintRoutesCalledFromOutsideTheDomain: Map<String, Set<String>> =
+        codebase
+            .filterNot { it.packageName.startsWith("com.housedash.domain") }
+            .flatMap { caller ->
+                caller.methodCallsFromSelf
+                    .map { "${it.targetOwner.name}#${it.target.name}" }
+                    .filter { it in watchedMintRoutes }
+                    .map { caller.packageName to it }
+            }.groupBy({ it.first }, { it.second })
+            .mapValues { it.value.toSet() }
+
+    private val reconstructionRoutesCalledFromOutsideTheDomain: Map<String, Set<String>> =
+        codebase
+            .filterNot { it.packageName.startsWith("com.housedash.domain") }
+            .flatMap { caller ->
+                caller.methodCallsFromSelf
+                    .map { "${it.targetOwner.name}#${it.target.name}" }
+                    .filter { it in reconstructionEntryPoints }
+                    .map { caller.packageName to it }
+            }.groupBy({ it.first }, { it.second })
+            .mapValues { it.value.toSet() }
+
+    private val rowsForgedOutsideTheDomain: Map<String, Set<String>> =
+        codebase
+            .filterNot { it.packageName.startsWith("com.housedash.domain") }
+            .flatMap { caller ->
+                caller.constructorCallsFromSelf
+                    .filter { storedRow.test(it.targetOwner) }
+                    .map { caller.packageName to it.targetOwner.name }
+            }.groupBy({ it.first }, { it.second })
+            .mapValues { it.value.toSet() }
+
     private fun typesNamedIn(named: JavaType): List<JavaClass> {
         val erasure = named.toErasure()
         val within =
@@ -160,14 +200,15 @@ class LayeringTest {
         claim: String,
         private val guarded: DescribedPredicate<JavaClass>,
         private val mintKeys: Set<String>,
-        private val permitted: (JavaClass, JavaClass) -> Boolean,
+        private val permitted: (JavaClass, JavaClass, String) -> Boolean,
     ) : ArchCondition<JavaClass>(claim) {
         override fun check(
             item: JavaClass,
             events: ConditionEvents,
         ) {
             item.constructorCallsFromSelf
-                .filter { guarded.test(it.targetOwner) && !permitted(item, it.targetOwner) }
+                .filter { guarded.test(it.targetOwner) }
+                .filter { !permitted(item, it.targetOwner, "${it.targetOwner.name}#$CONSTRUCTOR") }
                 .forEach { call ->
                     events.add(
                         SimpleConditionEvent.violated(
@@ -179,7 +220,7 @@ class LayeringTest {
                 }
             item.methodCallsFromSelf
                 .filter { "${it.targetOwner.name}#${it.target.name}" in mintKeys }
-                .filter { !permitted(item, it.targetOwner) }
+                .filter { !permitted(item, it.targetOwner, "${it.targetOwner.name}#${it.target.name}") }
                 .forEach { call ->
                     events.add(
                         SimpleConditionEvent.violated(
@@ -366,7 +407,8 @@ class LayeringTest {
                     "only mint a type whose construction its own bounded context closed from inside that package",
                     closedConstruction,
                     mintTargetsByProducedType.values.flatten().toSet(),
-                ) { caller, owner -> caller.packageName == owner.packageName },
+                    mintPermission,
+                ),
             ).`as`(
                 "a type whose constructors a bounded context made private is minted by that package alone. " +
                     "What is watched is every reachable domain member that names such a type in its return " +
@@ -396,7 +438,7 @@ class LayeringTest {
                     "only reconstruct an aggregate from a stored row inside its own package or in the repository",
                     storedRow,
                     reconstructionEntryPoints,
-                ) { caller, owner ->
+                ) { caller, owner, _ ->
                     caller.packageName == owner.packageName || inPersistence(caller)
                 },
             ).`as`(
@@ -536,18 +578,87 @@ class LayeringTest {
     }
 
     @Test
-    fun `both mint boundaries are armed tripwires today because no app or adapters class exists yet`() {
+    fun `both mint boundaries now have subjects outside the domain, and these are the packages they scope by`() {
         val outsideTheDomain =
             codebase
                 .filter { type -> LAYERS_THE_MINT_RULES_SCOPE_BY.any { type.packageName.startsWith(it) } }
-                .map { it.name }
-        assertTrue(outsideTheDomain.isEmpty()) {
-            "both mint boundaries scope their permission by package, and until Task 3 and Task 4 there is no " +
-                "app or adapters package for them to refuse, so neither rule has a subject outside the domain " +
-                "and both are tripwires rather than enforcement. These classes now exist: $outsideTheDomain. " +
-                "Rename this test and both rules when that is no longer true, because D176's lesson is that a " +
-                "test named as a proof gets trusted as one"
+                .map { it.packageName }
+                .toSortedSet()
+        assertTrue(outsideTheDomain.isNotEmpty()) {
+            "both mint boundaries scope their permission by package, so with no app or adapters package on the " +
+                "tree neither rule has a subject outside the domain and both are tripwires rather than " +
+                "enforcement. That is what this test used to assert, under a name that said so. It now " +
+                "asserts the opposite, and if the app and adapters layers ever leave the tree it must go back " +
+                "to the tripwire wording rather than passing vacuously"
         }
+        assertEquals(
+            PACKAGES_THE_MINT_RULES_REFUSE,
+            outsideTheDomain.toSet(),
+            "a new package under app or adapters is a new caller the two rules have to decide about, so it " +
+                "lands here by name and whoever adds it writes its entitlement or finds it refused",
+        )
+    }
+
+    @Test
+    fun `the mint boundary entitles exactly the routes the layers outside the domain call`() {
+        assertEquals(
+            ROUTES_ENTITLED_BY_PACKAGE,
+            mintRoutesCalledFromOutsideTheDomain,
+            "the entitlement is per route rather than per package, because the rule's own prose entitles the " +
+                "parse boundaries by name and never by a wildcard, and a package entitled for one route would " +
+                "otherwise be entitled for all of them. Description.rehydrated is the reason it matters: it " +
+                "produces the same type as Description.of and skips the I7 filter, so it is watched and " +
+                "entitled to nobody outside domain.case. This leg is equality rather than containment, so an " +
+                "entitlement whose route nobody calls any more reddens with its name instead of sitting there " +
+                "permitting something nobody reads",
+        )
+        val stale = ROUTES_ENTITLED_BY_PACKAGE.values.flatten().filterNot { it in watchedMintRoutes }
+        assertTrue(stale.isEmpty()) {
+            "an entitlement naming a route the mint rule no longer watches permits nothing and hides that the " +
+                "rule stopped watching it, which is D194's question asked of the permission list: $stale"
+        }
+    }
+
+    @Test
+    fun `the reconstruction boundary now has a subject, and the subject is the repository`() {
+        assertEquals(
+            mapOf(persistencePackage to RECONSTRUCTION_ENTRY_POINTS_BY_NAME),
+            reconstructionRoutesCalledFromOutsideTheDomain,
+            "this rule passed the first time it had a subject, because the package it entitles is the package " +
+                "the repository was written in. That is the rule working rather than the rule being quiet, " +
+                "and the difference between the two is visible only from a leg that says which package " +
+                "actually reconstructs",
+        )
+        assertEquals(
+            mapOf(persistencePackage to FORGEABLE_ROW_CONSTRUCTORS),
+            rowsForgedOutsideTheDomain,
+            "forging the row and calling the entry point are the same capability, so the constructor arm needs " +
+                "its own subject; without this leg the whole rule could be satisfied by a repository that " +
+                "reconstructs and never writes",
+        )
+    }
+
+    @Test
+    fun `the edge neither re-implements the I7 filter nor reaches the text rule around it`() {
+        noClasses()
+            .that()
+            .resideInAnyPackage("com.housedash.app..", "com.housedash.adapters..")
+            .should()
+            .dependOnClassesThat()
+            .haveFullyQualifiedName("kotlin.text.Regex")
+            .orShould()
+            .dependOnClassesThat()
+            .resideInAnyPackage("java.util.regex..")
+            .orShould()
+            .callMethodWhere(callTo("contactDetailsIn", sharedKernelPackage))
+            .orShould()
+            .callMethodWhere(callTo("withoutContactDetails", sharedKernelPackage))
+            .`as`(
+                "I7 is one rule in one place. The client filter is convenience and Description.of is the " +
+                    "boundary, so the edge may submit text to that filter and may not decide anything about " +
+                    "it: no pattern of its own, and no call to the two functions the filter is written in, " +
+                    "either of which would answer the I7 question a second time and disagree with the first",
+            ).check(codebase)
     }
 
     @Test
@@ -617,7 +728,28 @@ class LayeringTest {
 
         val FORGEABLE_ROW_CONSTRUCTORS = setOf("$CASE_PACKAGE.CaseRow")
 
-        val LAYERS_THE_MINT_RULES_SCOPE_BY = listOf("com.housedash.app", "com.housedash.adapters")
+        const val CONSTRUCTOR = "<init>"
+
+        const val APP_PACKAGE = "com.housedash.app"
+
+        const val WIRE_PACKAGE = "com.housedash.adapters.inbound.http"
+
+        val LAYERS_THE_MINT_RULES_SCOPE_BY = listOf(APP_PACKAGE, "com.housedash.adapters")
+
+        val PACKAGES_THE_MINT_RULES_REFUSE =
+            setOf(APP_PACKAGE, WIRE_PACKAGE, "com.housedash.adapters.outbound.persistence")
+
+        val ROUTES_ENTITLED_BY_PACKAGE: Map<String, Set<String>> =
+            mapOf(
+                APP_PACKAGE to
+                    setOf(
+                        "$CASE_PACKAGE.CaseId\$Companion#of",
+                        "$CASE_PACKAGE.Description\$Companion#of",
+                        "$CASE_PACKAGE.DraftCase\$Companion#of",
+                        "$CASE_PACKAGE.DraftCase#describe",
+                        "$CASE_PACKAGE.PhotoId\$Companion#of",
+                    ),
+            )
 
         val INBOUND_PARSE_BOUNDARIES =
             listOf(
