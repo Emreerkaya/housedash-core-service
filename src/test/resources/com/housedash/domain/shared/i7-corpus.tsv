@@ -197,3 +197,5 @@ ACCEPT	ACCEPT		boiler serviced 2019, 2021, 2023 and now it leaks, call me anytim
 ACCEPT	ACCEPT		the swap was quoted at 12,000, 18,000, 24,000 so far, call me	D288; the cued twin of line 62
 ACCEPT	REJECT	PhoneNumber	I need 2 600 900 1200 mm boards cut for the shelves in the alcove	D289; the third of the four sentences the SI residual is pinned with, rowed so the two instruments agree about the size of a residual they both describe
 ACCEPT	REJECT	PhoneNumber	The riser needs 6 100 150 200 mm couplers to finish the run here	D289; the fourth of the four sentences the SI residual is pinned with
+REJECT	REJECT	PhoneNumber	ring me 917555019 about the leak under the kitchen sink	D290; nine digits with a cue and no separators are found, and the spaced twin below is not. Filed as a question for an owner rather than as a defect: the floor is arm-dependent and both spellings are dialable
+REJECT	ACCEPT		ring me 917 555 019 about the leak under the kitchen sink	D290; the spaced twin of the row above, nine digits with a cue, not found. Two spellings of one number differing only in grouping, rowed here so the question is somewhere something reads
