@@ -32,8 +32,21 @@ chmod +x "${stub_dir}/gh"
 
 sha=1111111111111111111111111111111111111111
 other=2222222222222222222222222222222222222222
-touched_domain='src/main/kotlin/com/housedash/domain/shared/ContactDetail.kt'
+
+# Fixtures for the diffs goal.md's "Function first" table distinguishes.
 untouched='README.md'
+touched_migration='src/main/resources/db/migration/V2__quote.sql'
+touched_case='src/main/kotlin/com/housedash/domain/case/Case.kt'
+touched_shared='src/main/kotlin/com/housedash/domain/shared/ContactDetail.kt'
+touched_money='src/main/kotlin/com/housedash/domain/money/EscrowHold.kt'
+touched_quote='src/main/kotlin/com/housedash/domain/quote/Quote.kt'
+touched_booking='src/main/kotlin/com/housedash/domain/booking/Booking.kt'
+touched_review='src/main/kotlin/com/housedash/domain/review/Review.kt'
+touched_mint='src/main/kotlin/com/housedash/adapters/inbound/http/MintController.kt'
+touched_gate_script='scripts/agent-review.sh'
+touched_workflow='.github/workflows/process-review.yml'
+touched_codeowners='CODEOWNERS'
+money_and_gate=$'src/main/kotlin/com/housedash/domain/money/EscrowHold.kt\nscripts/agent-review.sh'
 
 review() {
     local dimension=$1 verdict=$2 at=${3:-$sha} push=${4:-true} assoc=${5:-OWNER} tail=${6:-} state=${7:-COMMENTED} typename=${8:-User}
@@ -50,23 +63,9 @@ review_as() {
 
 set_of() { printf '[%s]' "$(printf '%s,' "$@" | sed 's/,$//')"; }
 
-four_dimensions=$(set_of \
-    "$(review architecture clean)" \
-    "$(review security clean)" \
-    "$(review testing clean)" \
-    "$(review performance clean)")
-
-all_five=$(set_of \
-    "$(review architecture clean)" \
-    "$(review security clean)" \
-    "$(review testing clean)" \
-    "$(review performance clean)" \
-    "$(review invariants clean)")
-
 pass=0
 fail=0
 names=''
-cases_this_suite_runs=62
 
 check() {
     local name=$1 want=$2 changed=$3 reviews=$4 wanted_text=${5:-} threads=${6:-[]} unwanted_text=${7:-}
@@ -96,157 +95,204 @@ check() {
     pass=$((pass + 1))
 }
 
-check 'five clean reviews on a domain diff pass' 0 "$touched_domain" "$all_five" 'none blocked'
+cases_this_suite_runs=73
 
-check 'four clean reviews pass when the diff avoids the domain layer' 0 "$untouched" "$four_dimensions" \
-    'architecture security testing performance'
+# --- No dimension required: a feature, a screen, a fixture, a migration, a wiring change ---
 
-check 'a domain diff without an invariants review is pending, not a refusal' 3 "$touched_domain" "$four_dimensions" \
-    'missing: no invariants review'
+check 'an ordinary diff requires no dimensions and passes with no reviews at all' 0 "$untouched" '[]' \
+    'this diff requires no review dimensions'
 
-check 'a missing architecture review is pending' 3 "$untouched" \
-    "$(set_of "$(review security clean)" "$(review testing clean)" "$(review performance clean)")" \
-    'missing: no architecture review'
+check 'a migration diff requires no dimensions and passes with no reviews' 0 "$touched_migration" '[]' \
+    'this diff requires no review dimensions'
 
-check 'a missing performance review is pending' 3 "$untouched" \
-    "$(set_of "$(review architecture clean)" "$(review security clean)" "$(review testing clean)")" \
-    'missing: no performance review'
+check 'a domain/case diff requires no dimensions, unlike the old whole-domain trigger' 0 "$touched_case" '[]' \
+    'this diff requires no review dimensions'
 
-check 'a blocked verdict blocks' 1 "$untouched" \
-    "$(set_of "$(review architecture blocked)" "$(review security clean)" "$(review testing clean)" "$(review performance clean)")" \
+check 'a domain/shared diff requires no dimensions, unlike the old whole-domain trigger' 0 "$touched_shared" '[]' \
+    'this diff requires no review dimensions'
+
+check 'a clean review naming a dimension an ordinary diff does not require is noted and still passes' 0 "$untouched" \
+    "$(set_of "$(review invariants clean)")" \
+    'is not counted'
+
+# --- domain/money, quote/, booking/, review/ or a mint route requires invariants ---
+
+check 'a domain/money diff with no invariants review is pending, naming invariants' 3 "$touched_money" '[]' \
+    'waiting for invariants'
+
+check 'a domain/money diff with a clean invariants review passes' 0 "$touched_money" \
+    "$(set_of "$(review invariants clean)")" \
+    'required: invariants'
+
+check 'a domain/quote diff requires invariants' 3 "$touched_quote" '[]' 'waiting for invariants'
+
+check 'a domain/booking diff requires invariants' 3 "$touched_booking" '[]' 'waiting for invariants'
+
+check 'a domain/review diff requires invariants' 3 "$touched_review" '[]' 'waiting for invariants'
+
+check 'a mint route file requires invariants through its own branch of the trigger' 3 "$touched_mint" '[]' \
+    'waiting for invariants'
+
+check 'a blocked invariants verdict blocks a money diff' 1 "$touched_money" \
+    "$(set_of "$(review invariants blocked)")" \
     'reports verdict blocked'
 
-check 'a verdict misspelled by one character fails closed rather than reading as clean' 1 "$untouched" \
-    "$(set_of "$(review architecture cleann)" "$(review security clean)" "$(review testing clean)" "$(review performance clean)")" \
+check 'a malformed verdict on a money diff fails closed rather than reading as clean' 1 "$touched_money" \
+    "$(set_of "$(review invariants cleann)")" \
     'is not one of the verdicts'
 
-check 'a review at a stale sha does not count, leaving that dimension pending' 3 "$untouched" \
-    "$(set_of "$(review architecture clean "$other")" "$(review security clean)" "$(review testing clean)" "$(review performance clean)")" \
-    'missing: no architecture review'
+# --- a merge gate, a ruleset, a permission, or CI that decides whether code lands requires security ---
 
-check 'a review by an author who cannot push is ignored, leaving that dimension pending' 3 "$untouched" \
-    "$(set_of "$(review architecture clean "$sha" false)" "$(review security clean)" "$(review testing clean)" "$(review performance clean)")" \
+check 'a diff of the gate script itself requires security, and only security' 3 "$touched_gate_script" '[]' \
+    'waiting for security'
+
+check 'a diff of the gate script with a clean security review passes' 0 "$touched_gate_script" \
+    "$(set_of "$(review security clean)")" \
+    'required: security'
+
+check 'a diff of a workflow file requires security' 3 "$touched_workflow" '[]' 'waiting for security'
+
+check 'a diff of CODEOWNERS requires security' 3 "$touched_codeowners" '[]' 'waiting for security'
+
+check 'a blocked security verdict blocks a gate diff' 1 "$touched_gate_script" \
+    "$(set_of "$(review security blocked)")" \
+    'reports verdict blocked'
+
+# --- both triggers on one diff ---
+
+check 'a diff touching both money and the gate script requires invariants and security together' 3 \
+    "$money_and_gate" '[]' 'waiting for invariants security'
+
+check 'a mixed diff with only invariants posted still waits on security alone' 3 "$money_and_gate" \
+    "$(set_of "$(review invariants clean)")" \
+    'waiting for security' '[]' 'waiting for invariants security'
+
+check 'a mixed diff with both dimensions posted clean passes' 0 "$money_and_gate" \
+    "$(set_of "$(review invariants clean)" "$(review security clean)")" \
+    'required: invariants security'
+
+check 'a mixed diff blocks on either dimension even while the other is still pending' 1 "$money_and_gate" \
+    "$(set_of "$(review invariants blocked)")" \
+    'reports verdict blocked'
+
+# --- entitlement, trailer parsing and verdict handling, exercised against a single required dimension ---
+
+check 'a review at a stale sha does not count, leaving the dimension pending' 3 "$touched_gate_script" \
+    "$(set_of "$(review security clean "$other")")" \
+    'missing: no security review'
+
+check 'a review by an author who cannot push is ignored, leaving the dimension pending' 3 "$touched_gate_script" \
+    "$(set_of "$(review security clean "$sha" false)")" \
     'is not entitled to gate a merge'
 
-check 'a review by a drive-by contributor is ignored, leaving that dimension pending' 3 "$untouched" \
-    "$(set_of "$(review architecture clean "$sha" true CONTRIBUTOR)" "$(review security clean)" "$(review testing clean)" "$(review performance clean)")" \
+check 'a review by a drive-by contributor is ignored, leaving the dimension pending' 3 "$touched_gate_script" \
+    "$(set_of "$(review security clean "$sha" true CONTRIBUTOR)")" \
     'is not entitled to gate a merge'
 
-check 'an APPROVED review carrying a blocked verdict still blocks' 1 "$untouched" \
-    "$(set_of "$(review_as APPROVED User architecture blocked)" "$(review security clean)" "$(review testing clean)" "$(review performance clean)")" \
+check 'an APPROVED review carrying a blocked verdict still blocks' 1 "$touched_gate_script" \
+    "$(set_of "$(review_as APPROVED User security blocked)")" \
     'reports verdict blocked'
 
-check 'an APPROVED review is counted, because approving is how a review is filed here' 0 "$untouched" \
-    "$(set_of "$(review_as APPROVED User architecture clean)" "$(review security clean)" "$(review testing clean)" "$(review performance clean)")" \
-    'none blocked' '[]' 'is not entitled'
+check 'an APPROVED review is counted, because approving is how a review is filed here' 0 "$touched_gate_script" \
+    "$(set_of "$(review_as APPROVED User security clean)")" \
+    'required: security' '[]' 'is not entitled'
 
-check 'a review by an organisation member gates exactly as the owner does' 0 "$untouched" \
-    "$(set_of "$(review architecture clean "$sha" true MEMBER)" "$(review security clean)" "$(review testing clean)" "$(review performance clean)")" \
-    'none blocked' '[]' 'is not entitled'
+check 'a review by an organisation member gates exactly as the owner does' 0 "$touched_gate_script" \
+    "$(set_of "$(review security clean "$sha" true MEMBER)")" \
+    'required: security' '[]' 'is not entitled'
 
-check 'a blocked verdict from an organisation member blocks' 1 "$untouched" \
-    "$(set_of "$(review architecture blocked "$sha" true MEMBER)" "$(review security clean)" "$(review testing clean)" "$(review performance clean)")" \
+check 'a blocked verdict from an organisation member blocks' 1 "$touched_gate_script" \
+    "$(set_of "$(review security blocked "$sha" true MEMBER)")" \
     'reports verdict blocked'
 
-check 'a review by a collaborator gates exactly as the owner does' 0 "$untouched" \
-    "$(set_of "$(review architecture clean "$sha" true COLLABORATOR)" "$(review security clean)" "$(review testing clean)" "$(review performance clean)")" \
-    'none blocked' '[]' 'is not entitled'
+check 'a review by a collaborator gates exactly as the owner does' 0 "$touched_gate_script" \
+    "$(set_of "$(review security clean "$sha" true COLLABORATOR)")" \
+    'required: security' '[]' 'is not entitled'
 
-check 'a blocked verdict from a collaborator blocks' 1 "$untouched" \
-    "$(set_of "$(review architecture blocked "$sha" true COLLABORATOR)" "$(review security clean)" "$(review testing clean)" "$(review performance clean)")" \
+check 'a blocked verdict from a collaborator blocks' 1 "$touched_gate_script" \
+    "$(set_of "$(review security blocked "$sha" true COLLABORATOR)")" \
     'reports verdict blocked'
 
-check 'a trailer that is not the last line does not count, leaving that dimension pending' 3 "$untouched" \
-    "$(set_of "$(review architecture clean "$sha" true OWNER 'and one more thought afterwards')" "$(review security clean)" "$(review testing clean)" "$(review performance clean)")" \
-    'missing: no architecture review'
-
-check 'a trailer naming only a sha prefix does not count, leaving that dimension pending' 3 "$untouched" \
-    "$(set_of "$(review architecture clean 1111111)" "$(review security clean)" "$(review testing clean)" "$(review performance clean)")" \
-    'missing: no architecture review'
-
-check 'a path git quotes still requires the invariants review' 3 \
-    '"src/main/kotlin/com/housedash/domain/shared/Gr\303\266\303\237e.kt"' \
-    "$four_dimensions" 'missing: no invariants review'
-
-check 'a diff of the gate itself still requires the security review' 3 \
-    'scripts/agent-review.sh' \
-    "$(set_of "$(review architecture clean)" "$(review testing clean)" "$(review performance clean)")" \
+check 'a trailer that is not the last line does not count, leaving the dimension pending' 3 "$touched_gate_script" \
+    "$(set_of "$(review security clean "$sha" true OWNER 'and one more thought afterwards')")" \
     'missing: no security review'
 
-check 'a diff of the workflows still requires the security review' 3 \
-    '.github/workflows/process-review.yml' \
-    "$(set_of "$(review architecture clean)" "$(review testing clean)" "$(review performance clean)")" \
+check 'a trailer naming only a sha prefix does not count, leaving the dimension pending' 3 "$touched_gate_script" \
+    "$(set_of "$(review security clean 1111111)")" \
     'missing: no security review'
 
-check 'the security review is required whatever the diff touches' 3 "$untouched" \
-    "$(set_of "$(review architecture clean)" "$(review testing clean)" "$(review performance clean)")" \
-    'missing: no security review'
+check 'a diff of the gate itself still requires security even when the changed path is quoted' 3 \
+    '"scripts/agent-review.sh"' '[]' 'waiting for security'
 
-check 'the required set is exactly the four dimensions when the domain is untouched' 0 \
-    'scripts/agent-review.sh' "$four_dimensions" \
-    'every required dimension (architecture security testing performance)'
+check 'the required set is named exactly when both dimensions are satisfied' 0 \
+    "$money_and_gate" "$(set_of "$(review invariants clean)" "$(review security clean)")" \
+    'required: invariants security'
 
-check 'a clean review naming a dimension this diff does not require is not counted' 0 "$untouched" \
-    "$all_five" 'is not counted'
+check 'a clean review naming a dimension this diff does not require is not counted' 0 "$touched_gate_script" \
+    "$(set_of "$(review security clean)" "$(review invariants clean)")" \
+    'is not counted'
 
 check 'a blocked review blocks even when this diff does not require its dimension' 1 "$untouched" \
-    "$(set_of "$(review architecture clean)" "$(review security clean)" "$(review testing clean)" "$(review performance clean)" "$(review invariants blocked)")" \
+    "$(set_of "$(review invariants blocked)")" \
     'reports verdict blocked'
 
 check 'a malformed verdict fails closed even on a dimension this diff does not require' 1 "$untouched" \
-    "$(set_of "$(review architecture clean)" "$(review security clean)" "$(review testing clean)" "$(review performance clean)" "$(review invariants blockedd)")" \
+    "$(set_of "$(review invariants blockedd)")" \
     'is not one of the verdicts'
 
-check 'a CHANGES_REQUESTED review carrying blocked still blocks' 1 "$untouched" \
-    "$(set_of "$(review_as CHANGES_REQUESTED User architecture blocked)" "$(review security clean)" "$(review testing clean)" "$(review performance clean)")" \
+check 'a CHANGES_REQUESTED review carrying blocked still blocks' 1 "$touched_gate_script" \
+    "$(set_of "$(review_as CHANGES_REQUESTED User security blocked)")" \
     'reports verdict blocked'
 
-check 'a DISMISSED review does not count' 3 "$untouched" \
-    "$(set_of "$(review_as DISMISSED User architecture clean)" "$(review security clean)" "$(review testing clean)" "$(review performance clean)")" \
+check 'a DISMISSED review does not count' 3 "$touched_gate_script" \
+    "$(set_of "$(review_as DISMISSED User security clean)")" \
     'is not entitled to gate a merge'
 
-check 'a review by a bot does not count' 3 "$untouched" \
-    "$(set_of "$(review_as COMMENTED Bot architecture clean)" "$(review security clean)" "$(review testing clean)" "$(review performance clean)")" \
+check 'a review by a bot does not count' 3 "$touched_gate_script" \
+    "$(set_of "$(review_as COMMENTED Bot security clean)")" \
     'is not entitled to gate a merge'
 
-check 'a later clean review does not clear an earlier blocked one at the same sha' 1 "$untouched" \
-    "$(set_of "$(review architecture blocked)" "$(review architecture clean)" "$(review security clean)" "$(review testing clean)" "$(review performance clean)")" \
+check 'a later clean review does not clear an earlier blocked one at the same sha' 1 "$touched_gate_script" \
+    "$(set_of "$(review security blocked)" "$(review security clean)")" \
     'reports verdict blocked'
 
-check 'a capitalised verdict is malformed rather than invisible' 1 "$untouched" \
-    "$(set_of "$(review architecture clean)" "$(review security clean)" "$(review testing clean)" "$(review performance clean)" "$(review invariants Blocked)")" \
+check 'a capitalised verdict is malformed rather than invisible' 1 "$touched_gate_script" \
+    "$(set_of "$(review security Blocked)")" \
     'is not one of the verdicts'
 
-check 'a capitalised blocked beside a clean one on the same required dimension still fails' 1 "$untouched" \
-    "$(set_of "$(review architecture BLOCKED)" "$(review architecture clean)" "$(review security clean)" "$(review testing clean)" "$(review performance clean)")" \
+check 'a capitalised blocked beside a clean one on the same required dimension still fails' 1 "$touched_gate_script" \
+    "$(set_of "$(review security BLOCKED)" "$(review security clean)")" \
     'is not one of the verdicts'
 
-check 'a verdict with trailing punctuation is malformed rather than invisible' 1 "$untouched" \
-    "$(set_of "$(review architecture clean)" "$(review security clean)" "$(review testing clean)" "$(review performance clean)" "$(review invariants 'blocked.')")" \
+check 'a verdict with trailing punctuation is malformed rather than invisible' 1 "$touched_gate_script" \
+    "$(set_of "$(review security 'blocked.')")" \
     'is not one of the verdicts'
 
-check 'a misspelled dimension is noted and not counted, leaving the real one pending' 3 "$untouched" \
-    "$(set_of "$(review architeture clean)" "$(review security clean)" "$(review testing clean)" "$(review performance clean)")" \
-    'missing: no architecture review'
+check 'a misspelled dimension is not counted, leaving the real one pending' 3 "$touched_gate_script" \
+    "$(set_of "$(review securty clean)")" \
+    'missing: no security review'
 
-check 'a dimension holding a regex metacharacter reads as missing, it does not satisfy the real one' 3 "$untouched" \
-    "$(set_of "$(review 'a.chitecture' clean)" "$(review security clean)" "$(review testing clean)" "$(review performance clean)")" \
-    'missing: no architecture review'
+check 'a dimension holding a regex metacharacter reads as missing, it does not satisfy the real one' 3 \
+    "$touched_gate_script" "$(set_of "$(review 'securit.' clean)")" \
+    'missing: no security review'
 
-check 'an empty diff refuses to pass vacuously' 2 "" "$all_five" 'refusing to pass vacuously'
+check 'a dimension name with the required one as its tail does not satisfy the requirement' 3 \
+    "$touched_gate_script" "$(set_of "$(review xsecurity clean)")" \
+    'missing: no security review'
 
-check 'a body with CRLF line endings still counts, as the web UI sends them' 0 "$untouched" \
-    "$(printf '[%s,%s,%s,%s]' \
-        "$(printf '{"state":"COMMENTED","authorAssociation":"OWNER","authorCanPushToRepository":true,"author":{"login":"someone","__typename":"User"},"body":"Prose.\\r\\n\\r\\n<!-- review-sha: %s dimension: architecture verdict: clean -->\\r\\n"}' "$sha")" \
-        "$(review security clean)" "$(review testing clean)" "$(review performance clean)")" \
-    'none blocked'
+check 'an empty diff refuses to pass vacuously' 2 "" '[]' 'refusing to pass vacuously'
 
-check 'no reviews at all does not pass' 3 "$untouched" '[]' 'missing: no architecture review'
+check 'a body with CRLF line endings still counts, as the web UI sends them' 0 "$touched_gate_script" \
+    "$(printf '[%s]' \
+        "$(printf '{"state":"COMMENTED","authorAssociation":"OWNER","authorCanPushToRepository":true,"author":{"login":"someone","__typename":"User"},"body":"Prose.\\r\\n\\r\\n<!-- review-sha: %s dimension: security verdict: clean -->\\r\\n"}' "$sha")")" \
+    'required: security'
+
+check 'no reviews at all does not pass' 3 "$touched_gate_script" '[]' 'missing: no security review'
 
 for short in 1111111 111111111111111111111111111111111111111 11111111111111111111111111111111111111111 \
     ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ 111111111111111111111111111111111111111g; do
     out=$(PATH="${stub_dir}:${PATH}" \
-        STUB_CHANGED="$untouched" STUB_REVIEWS="$four_dimensions" STUB_THREADS='[]' \
+        STUB_CHANGED="$untouched" STUB_REVIEWS='[]' STUB_THREADS='[]' \
         PR_NUMBER=1 HEAD_SHA="$short" GITHUB_REPOSITORY=Emreerkaya/housedash-core-service \
         bash "$gate" 2>&1)
     got=$?
@@ -260,7 +306,7 @@ for short in 1111111 111111111111111111111111111111111111111 1111111111111111111
 done
 
 out=$(PATH="${stub_dir}:${PATH}" \
-    STUB_CHANGED="$untouched" STUB_REVIEWS="$four_dimensions" STUB_THREADS='[]' \
+    STUB_CHANGED="$untouched" STUB_REVIEWS='[]' STUB_THREADS='[]' \
     PR_NUMBER=1 HEAD_SHA="${sha}"$'\n'"${other}" GITHUB_REPOSITORY=Emreerkaya/housedash-core-service \
     bash "$gate" 2>&1)
 got=$?
@@ -273,11 +319,11 @@ else
 fi
 
 out=$(PATH="${stub_dir}:${PATH}" \
-    STUB_CHANGED="$untouched" STUB_REVIEWS="$four_dimensions" STUB_THREADS='[]' STUB_FAIL_DIFF=1 \
+    STUB_CHANGED="$untouched" STUB_REVIEWS='[]' STUB_THREADS='[]' STUB_FAIL_DIFF=1 \
     PR_NUMBER=1 HEAD_SHA="$sha" GITHUB_REPOSITORY=Emreerkaya/housedash-core-service \
     bash "$gate" 2>&1)
 got=$?
-if [ "$got" -eq 0 ] || printf '%s' "$out" | grep -qE 'every required dimension|refusing to pass vacuously'; then
+if [ "$got" -eq 0 ] || printf '%s' "$out" | grep -qE 'requires no review dimensions|refusing to pass vacuously'; then
     printf 'FAIL a gh that cannot list the changed files must fail loudly, not vacuously: exit %s\n%s\n\n' "$got" "$out" >&2
     fail=$((fail + 1))
 else
@@ -299,7 +345,7 @@ probe_repo() {
     git -C "$root" add -A >/dev/null 2>&1
     local out got
     out=$(cd "$root" && PATH="${stub_dir}:${PATH}" \
-        STUB_CHANGED="$untouched" STUB_REVIEWS="$four_dimensions" STUB_THREADS='[]' \
+        STUB_CHANGED="$untouched" STUB_REVIEWS='[]' STUB_THREADS='[]' \
         PR_NUMBER=1 HEAD_SHA="$sha" GITHUB_REPOSITORY=Emreerkaya/housedash-core-service \
         bash "$gate" 2>&1)
     got=$?
@@ -313,61 +359,56 @@ probe_repo() {
     fi
 }
 
-probe_repo 'a checkout no trigger pattern matches refuses to run at all' \
-    'can no longer see the layer it guards' README.md
+probe_repo 'a checkout where neither trigger pattern matches any file refuses to run at all' \
+    'can no longer see the path it guards' README.md
+
+probe_repo 'a checkout with a money file but no gate-bearing file still refuses, on the gate trigger' \
+    'can no longer see the path it guards' README.md src/main/kotlin/com/housedash/domain/money/EscrowHold.kt
 
 probe_repo 'a checkout whose domain layer moved refuses to run even though the rest is there' \
-    'can no longer see the layer it guards' README.md scripts/agent-review.sh .github/workflows/process-review.yml
+    'can no longer see the path it guards' README.md scripts/agent-review.sh .github/workflows/process-review.yml
 
-check 'a trailer sha one character too long reads as missing, though the trailer length clause alone cannot be isolated because HEAD_SHA is already forty lowercase hex' 3 "$untouched" \
-    "$(set_of "$(review architecture clean "${sha}1")" "$(review security clean)" "$(review testing clean)" "$(review performance clean)")" \
-    'missing: no architecture review'
-
-check 'a trailer sha that is not hexadecimal reads as missing' 3 "$untouched" \
-    "$(set_of "$(review architecture clean zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz)" "$(review security clean)" "$(review testing clean)" "$(review performance clean)")" \
-    'missing: no architecture review'
-
-check 'a dimension name with the required one as its tail does not satisfy the requirement' 3 "$untouched" \
-    "$(set_of "$(review architecture clean)" "$(review xsecurity clean)" "$(review testing clean)" "$(review performance clean)")" \
+check 'a trailer sha one character too long reads as missing, though the trailer length clause alone cannot be isolated because HEAD_SHA is already forty lowercase hex' 3 \
+    "$touched_gate_script" "$(set_of "$(review security clean "${sha}1")")" \
     'missing: no security review'
 
-check 'two unresolved threads are noted and do not block, because the ruleset blocks on them' 0 "$untouched" \
-    "$four_dimensions" '2 unresolved thread(s)' '[{"isResolved":false},{"isResolved":false}]'
+check 'a trailer sha that is not hexadecimal reads as missing' 3 "$touched_gate_script" \
+    "$(set_of "$(review security clean zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz)")" \
+    'missing: no security review'
 
-check 'a resolved thread is not counted' 0 "$untouched" "$four_dimensions" \
-    'none blocked' '[{"isResolved":true},{"isResolved":true}]' 'unresolved thread'
+check 'two unresolved threads are noted and do not block, because the ruleset blocks on them' 0 "$touched_gate_script" \
+    "$(set_of "$(review security clean)")" '2 unresolved thread(s)' '[{"isResolved":false},{"isResolved":false}]'
 
-check 'no threads at all is not an unresolved thread' 0 "$untouched" "$four_dimensions" \
-    'none blocked' '[]' 'unresolved thread'
+check 'a resolved thread is not counted' 0 "$touched_gate_script" \
+    "$(set_of "$(review security clean)")" \
+    'required: security' '[{"isResolved":true},{"isResolved":true}]' 'unresolved thread'
 
-check 'a thread node that is not an object refuses to report a count it did not measure' 2 "$untouched" \
-    "$four_dimensions" 'measured nothing' '["x"]'
+check 'no threads at all is not an unresolved thread' 0 "$touched_gate_script" \
+    "$(set_of "$(review security clean)")" \
+    'required: security' '[]' 'unresolved thread'
 
-check 'a renamed isResolved field is refused rather than silently counted as zero' 2 "$untouched" \
-    "$four_dimensions" 'measured nothing' '[{"resolved":false}]'
+check 'a thread node that is not an object refuses to report a count it did not measure' 2 "$touched_gate_script" \
+    "$(set_of "$(review security clean)")" 'measured nothing' '["x"]'
 
-check 'an isResolved that is not a boolean is refused rather than silently counted as zero' 2 "$untouched" \
-    "$four_dimensions" 'measured nothing' '[{"isResolved":"maybe"}]'
+check 'a renamed isResolved field is refused rather than silently counted as zero' 2 "$touched_gate_script" \
+    "$(set_of "$(review security clean)")" 'measured nothing' '[{"resolved":false}]'
 
-check 'no dimension has posted, so the round is pending and every required dimension is named' 3 "$untouched" '[]' \
-    'waiting for architecture security testing performance'
+check 'an isResolved that is not a boolean is refused rather than silently counted as zero' 2 "$touched_gate_script" \
+    "$(set_of "$(review security clean)")" 'measured nothing' '[{"isResolved":"maybe"}]'
 
-check 'some dimensions have posted, so only the ones still missing are named' 3 "$untouched" \
-    "$(set_of "$(review architecture clean)" "$(review security clean)")" \
-    'waiting for testing performance' '[]' 'waiting for architecture'
+check 'no dimension has posted on a mixed diff, so both required dimensions are named' 3 "$money_and_gate" '[]' \
+    'waiting for invariants security'
 
-check 'a domain diff waiting only on invariants names invariants alone' 3 "$touched_domain" \
-    "$four_dimensions" 'waiting for invariants' '[]' 'waiting for architecture'
+check 'every required dimension posted and clean is a pass, not a pending round' 0 "$money_and_gate" \
+    "$(set_of "$(review invariants clean)" "$(review security clean)")" \
+    'required: invariants security' '[]' 'pending:'
 
-check 'every required dimension posted and clean is a pass, not a pending round' 0 "$touched_domain" \
-    "$all_five" 'none blocked' '[]' 'pending:'
-
-check 'a blocked verdict is a refusal even while another dimension has not posted' 1 "$untouched" \
-    "$(set_of "$(review architecture blocked)" "$(review security clean)")" \
+check 'a blocked verdict is a refusal even while another required dimension has not posted' 1 "$money_and_gate" \
+    "$(set_of "$(review invariants blocked)")" \
     'reports verdict blocked' '[]' 'pending:'
 
-check 'a malformed verdict is a refusal, not a pending round' 1 "$untouched" \
-    "$(set_of "$(review architecture cleann)" "$(review security clean)" "$(review testing clean)" "$(review performance clean)")" \
+check 'a malformed verdict is a refusal, not a pending round' 1 "$touched_gate_script" \
+    "$(set_of "$(review security cleann)")" \
     'is not one of the verdicts' '[]' 'pending:'
 
 printf '\n%s passed, %s failed\n' "$pass" "$fail"

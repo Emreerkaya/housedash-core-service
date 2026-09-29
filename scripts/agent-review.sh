@@ -18,15 +18,25 @@ if [ -z "$changed" ]; then
     exit 2
 fi
 
-invariant_bearing=('^"?src/[^/]+/kotlin/com/housedash/domain/')
-for pattern in "${invariant_bearing[@]}"; do
+# goal.md, "Function first": an ordinary diff (a feature, a screen, a
+# fixture, a migration, a wiring change) requires no review dimension at
+# all. Money, quote, booking, review or a mint route requires invariants.
+# Anything that decides whether code lands -- a merge gate, a ruleset, a
+# permission, or CI -- requires security. Each trigger below is proven live
+# against this checkout before it is asked whether the diff touches it: a
+# pattern matching no file here has gone blind, and would silently stop
+# requiring its dimension rather than report that it no longer can.
+invariant_bearing=('^"?src/[^/]+/kotlin/com/housedash/domain/(money|quote|booking|review)/|(^|/)[Mm]int[A-Za-z]*\.kt$')
+gate_bearing=('^"?(scripts/agent-review\.sh|\.github/|CODEOWNERS)')
+
+for pattern in "${invariant_bearing[@]}" "${gate_bearing[@]}"; do
     if ! git ls-files | grep -Eq "$pattern"; then
-        printf 'no file in this checkout matches %s, so the invariants trigger can no longer see the layer it guards; update this pattern\n' "$pattern" >&2
+        printf 'no file in this checkout matches %s, so a required-dimension trigger can no longer see the path it guards; update this pattern\n' "$pattern" >&2
         exit 2
     fi
 done
 
-required=(architecture security testing performance)
+required=()
 defined_verdicts=(clean blocked)
 for pattern in "${invariant_bearing[@]}"; do
     if printf '%s\n' "$changed" | grep -Eq "$pattern"; then
@@ -34,6 +44,18 @@ for pattern in "${invariant_bearing[@]}"; do
         break
     fi
 done
+for pattern in "${gate_bearing[@]}"; do
+    if printf '%s\n' "$changed" | grep -Eq "$pattern"; then
+        required+=(security)
+        break
+    fi
+done
+
+if [ "${#required[@]}" -eq 0 ]; then
+    printf 'required: this diff requires no review dimensions; it touches none of the money, invariant or gate paths\n'
+else
+    printf 'required: %s\n' "${required[*]}"
+fi
 
 reviews=$(gh api graphql --paginate --slurp -f query='
   query($owner:String!,$repo:String!,$pr:Int!,$endCursor:String){
@@ -96,7 +118,8 @@ done < <(printf '%s\n' "$trailers")
 blocking=0
 pending=''
 
-for dimension in "${required[@]}"; do
+for dimension in "${required[@]:-}"; do
+    [ -z "${dimension:-}" ] && continue
     if ! printf '%s' "$at_head" | grep -q "^${dimension} "; then
         printf 'missing: no %s review at %s from an author entitled to gate a merge\n' "$dimension" "${head_sha:0:8}" >&2
         pending="${pending}${pending:+ }${dimension}"
@@ -107,9 +130,9 @@ while read -r dimension verdict; do
     [ -z "${dimension:-}" ] && continue
     case "$verdict" in
         clean)
-            if ! printf '%s\n' "${required[@]}" | grep -qxF "$dimension"; then
+            if ! printf '%s\n' "${required[@]:-}" | grep -qxF "$dimension"; then
                 printf 'note: a clean %s review at %s names a dimension this diff does not require (%s) and is not counted\n' \
-                    "$dimension" "${head_sha:0:8}" "${required[*]}" >&2
+                    "$dimension" "${head_sha:0:8}" "${required[*]:-none required}" >&2
             fi
             ;;
         blocked)
@@ -145,5 +168,9 @@ if [ -n "$pending" ]; then
     exit 3
 fi
 
-printf 'every required dimension (%s) reviewed at %s by an entitled author, every verdict one of %s and none blocked\n' \
-    "${required[*]}" "${head_sha:0:8}" "${defined_verdicts[*]}"
+if [ "${#required[@]}" -eq 0 ]; then
+    printf 'this diff requires no review dimensions; it touches none of the money, invariant or gate paths, and no posted verdict blocked or was malformed\n'
+else
+    printf 'every required dimension (%s) reviewed at %s by an entitled author, every verdict one of %s and none blocked\n' \
+        "${required[*]}" "${head_sha:0:8}" "${defined_verdicts[*]}"
+fi
