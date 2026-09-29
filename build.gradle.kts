@@ -51,6 +51,7 @@ tasks.test {
     inputs.file(layout.projectDirectory.file("CODEOWNERS"))
     inputs.file(layout.projectDirectory.file("scripts/agent-review.sh"))
     inputs.dir(layout.projectDirectory.dir("src/main/kotlin/com/housedash/domain"))
+    inputs.dir(layout.projectDirectory.dir("docs/adr"))
     finalizedBy(tasks.jacocoTestReport)
 }
 

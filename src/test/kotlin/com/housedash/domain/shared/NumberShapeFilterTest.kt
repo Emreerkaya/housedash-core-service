@@ -62,7 +62,11 @@ class NumberShapeFilterTest {
             "dm me on 9175550199",
             "beep me on 9175550199",
             "give me a bell on 9175550199",
+            "9175550199 is my landline",
+            "9175550199 is my home line",
+            "9175550199 is my work line",
         ).forEach(::assertNothingFound)
+        assertPhoneNumber("9175550199 is my mobile")
     }
 
     @Test
