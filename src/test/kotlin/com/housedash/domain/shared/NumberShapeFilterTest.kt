@@ -218,6 +218,18 @@ class NumberShapeFilterTest {
     }
 
     @Test
+    fun `each condition the uncued rule short circuits on has an input that reaches it`() {
+        listOf(
+            "the plate reads 1234 567 890 under the serial number here",
+            "the plate reads 12345 6 7890 under the serial number here",
+            "the plate reads 1 4444 1 4444 under the serial number here",
+            "the plate reads 1 4444 44 44 under the serial number here",
+            "the plate reads 12345 67890 under the serial number here",
+            "the plate reads 1 55555 4444 under the serial number here",
+        ).forEach(::assertNothingFound)
+    }
+
+    @Test
     fun `a thousands separated list of prices is money whatever its groups alternate to`() {
         listOf(
             "rated 10,000, 12,000 or 14,000 BTU",
