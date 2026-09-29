@@ -7,7 +7,7 @@ repo="${owner_repo##*/}"
 pr="${PR_NUMBER:?PR_NUMBER is required}"
 head_sha="${HEAD_SHA:?HEAD_SHA is required}"
 
-if [ "${#head_sha}" -ne 40 ]; then
+if [ "${#head_sha}" -ne 40 ] || ! printf '%s' "$head_sha" | grep -qxE '[0-9a-f]{40}'; then
     printf 'HEAD_SHA %s is not a full commit sha, and a trailer is only accepted when it names one exactly\n' "$head_sha" >&2
     exit 2
 fi
@@ -123,8 +123,14 @@ while read -r dimension verdict; do
     esac
 done < <(printf '%s' "$at_head")
 
-unresolved=$(printf '%s' "$threads" | jq '[.[] | select(.isResolved == false)] | length' 2>/dev/null || true)
-if [ "${unresolved:-0}" -gt 0 ]; then
+if ! unresolved=$(printf '%s' "$threads" | jq '
+    if all(type == "object" and (.isResolved | type) == "boolean")
+    then [.[] | select(.isResolved == false)] | length
+    else error("a reviewThreads node carries no boolean isResolved") end'); then
+    printf 'the reviewThreads query returned a shape this check cannot read, so it measured nothing rather than reporting no unresolved threads: %s\n' "$threads" >&2
+    exit 2
+fi
+if [ "$unresolved" -gt 0 ]; then
     printf 'note: %s unresolved thread(s); the ruleset blocks the merge on these, not this check\n' "$unresolved" >&2
 fi
 
