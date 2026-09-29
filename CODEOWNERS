@@ -3,6 +3,7 @@
 /src/main/kotlin/com/housedash/domain/shared/     @Emreerkaya
 /src/main/kotlin/com/housedash/domain/case/       @Emreerkaya
 /src/main/kotlin/com/housedash/domain/money/      @Emreerkaya
+/src/main/kotlin/com/housedash/domain/identity/   @Emreerkaya
 /src/main/kotlin/com/housedash/domain/quote/      @Emreerkaya
 /src/main/kotlin/com/housedash/domain/booking/    @Emreerkaya
 /src/main/kotlin/com/housedash/domain/review/     @Emreerkaya
