@@ -316,14 +316,6 @@ private val CATEGORIES_STRIPPED_BEFORE_MATCHING = TablesTheGuardReads.categories
 
 private val DOT_A_BRAND_MAY_BE_WRITTEN_WITH = TablesTheGuardReads.dotABrandMayBeWrittenWith
 
-private val PHONE_SEPARATOR = TablesTheGuardReads.phoneSeparator
-
-private val PHONE_CUE =
-    Regex("""(?i)\b(?:${TablesTheGuardReads.waysOfAskingToBeRung.joinToString("|")})\b""")
-
-private val NAMES_A_NUMBER_AS_SOMETHING_ELSE =
-    "(?:" + TablesTheGuardReads.namesANumberAsSomethingElse.joinToString("|") + ")"
-
 private val COMMON_TLD = "(?:" + TablesTheGuardReads.topLevelLabels.joinToString("|") + ")"
 
 private val CONSUMER_MAIL_HOST = "(?:" + TablesTheGuardReads.consumerMailHosts.joinToString("|") + ")"
@@ -354,35 +346,6 @@ private val SPACED_OUT_RUN =
             """(?:$BETWEEN_TWO_SPACED_OUT_CHARACTERS$SINGLE_CHARACTER_TOKEN)""" +
             FEWEST_FURTHER_CHARACTERS_IN_A_SPACED_OUT_RUN,
     )
-
-private const val LONGEST_SEPARATOR_BETWEEN_GROUPS = "{0,8}+"
-
-private const val MOST_GROUPS_A_CANDIDATE_MAY_HOLD = "{0,31}+"
-
-private val PHONE_CANDIDATE =
-    Regex(
-        """\+?+\p{Nd}(?:$PHONE_SEPARATOR$LONGEST_SEPARATOR_BETWEEN_GROUPS\p{Nd})""" +
-            MOST_GROUPS_A_CANDIDATE_MAY_HOLD,
-    )
-
-private const val WHOLE_GROUP_OF_DIGITS = """(?<!\p{Nd})\p{Nd}{1,6}+(?!\p{Nd})"""
-
-private const val THOUSANDS_PUNCTUATION = """[,;:]\p{Zs}{0,2}+"""
-
-private const val MOST_PUNCTUATED_SEPARATORS = "{1,5}+"
-
-private val PUNCTUATION_GROUPED_CANDIDATE =
-    Regex(
-        """\+?+$WHOLE_GROUP_OF_DIGITS(?:$THOUSANDS_PUNCTUATION$WHOLE_GROUP_OF_DIGITS)""" +
-            MOST_PUNCTUATED_SEPARATORS,
-    )
-
-private val DIGIT_GROUP = Regex("""\p{Nd}++""")
-
-private val SEPARATOR_A_SPREAD_OUT_NUMBER_USES = Regex("""[\p{Zs}\p{Pd}\u2212]""")
-
-private val UNQUALIFIED_NUMBER_CUE =
-    Regex("""(?i)(?<!\b$NAMES_A_NUMBER_AS_SOMETHING_ELSE\p{Zs}{0,4})\bnumbers?\b""")
 
 private const val BRACKET_OPENING_A_WORDED_SEPARATOR = """[(\[{<]"""
 
@@ -466,40 +429,6 @@ private val IBAN_CANDIDATE =
 
 private val PAYMENT_PATTERNS = listOf(PAYMENT_SERVICE, CASH_TAG, SORT_CODE, BANK_ACCOUNT, CRYPTO_ADDRESS)
 
-private const val INTERNATIONAL_PREFIX = "+"
-
-private val PHONE_DIGIT_COUNT = 9..15
-
-private const val MOST_PHONE_GROUPS = 6
-
-private const val FEWEST_GROUPS_NO_OTHER_NUMBER_USES = 3
-
-private const val MOST_DIGITS_IN_A_PHONE_GROUP = 6
-
-private const val FEWEST_DIGITS_IN_THE_LAST_PHONE_GROUP = 3
-
-private const val DIGITS_IN_AN_EXCHANGE_GROUP = 3
-
-private const val DIGITS_IN_A_DIALABLE_NUMBER = 10
-
-private const val DIGITS_IN_THE_LINE_GROUP = 4
-
-private const val GROUPS_FROM_THE_END_TO_THE_LINES_OWN_GROUP = 2
-
-private val DIGITS_IN_THE_GROUP_BEFORE_THE_LINE = 3..4
-
-private const val FEWEST_SINGLE_DIGIT_GROUPS = 9
-
-private const val ONE_DIGIT = 1
-
-private const val ONE_GROUP = 1
-
-private const val MOST_DIGITS_BEFORE_A_THOUSANDS_SEPARATOR = 3
-
-private const val DIGITS_IN_A_THOUSANDS_GROUP = 3
-
-private const val PHONE_CUE_WINDOW = 24
-
 private const val EMAIL_DOMAIN_GROUP = 1
 
 private const val FEWEST_DOMAIN_LABELS = 2
@@ -523,7 +452,7 @@ private const val FIRST_LETTER_VALUE = 10
 fun contactDetailsIn(text: String): Set<ContactDetail> {
     val folds = foldsForMatchingOnly(text)
     return buildSet {
-        if (folds.any { holdsPhoneNumber(it) }) add(ContactDetail.PhoneNumber)
+        if (folds.any { holdsPhoneNumberInAlreadyFoldedText(it) }) add(ContactDetail.PhoneNumber)
         if (folds.any { holdsEmailAddress(it) }) add(ContactDetail.EmailAddress)
         if (folds.any { holdsPaymentDetail(it) }) add(ContactDetail.PaymentLink)
         if (folds.any { MESSAGING_HANDLE.containsMatchIn(it) }) add(ContactDetail.MessagingHandle)
@@ -558,94 +487,6 @@ private fun foldsForMatchingOnly(text: String): List<String> {
         }
     return if (spacingClosed == folded) listOf(folded) else listOf(folded, spacingClosed)
 }
-
-private fun holdsPhoneNumber(folded: String): Boolean =
-    PHONE_CANDIDATE.findAll(folded).any { isAPhoneNumber(folded, it, punctuationGrouped = false) } ||
-        PUNCTUATION_GROUPED_CANDIDATE.findAll(folded).any {
-            isAPhoneNumber(folded, it, punctuationGrouped = true)
-        }
-
-private fun isAPhoneNumber(
-    folded: String,
-    candidate: MatchResult,
-    punctuationGrouped: Boolean,
-): Boolean {
-    val groups = DIGIT_GROUP.findAll(candidate.value).map { characterCount(it.value) }.toList()
-    val from = (candidate.range.first - PHONE_CUE_WINDOW).coerceAtLeast(0)
-    val to = (candidate.range.last + 1 + PHONE_CUE_WINDOW).coerceAtMost(folded.length)
-    val around = folded.substring(from, to)
-    val cued = PHONE_CUE.containsMatchIn(around) || UNQUALIFIED_NUMBER_CUE.containsMatchIn(around)
-    val prefixed = candidate.value.startsWith(INTERNATIONAL_PREFIX)
-    val separators = DIGIT_GROUP.split(candidate.value).drop(1).dropLast(1)
-    val digits = groups.sum()
-    if (digits in PHONE_DIGIT_COUNT &&
-        (
-            isSpreadOneDigitToASeparator(groups, separators) ||
-                hasPhoneShape(groups, digits, prefixed, cued, punctuationGrouped)
-        )
-    ) {
-        return true
-    }
-    val unpadded = groups.dropWhile { it == ONE_DIGIT }.dropLastWhile { it == ONE_DIGIT }
-    return unpadded.size != groups.size &&
-        unpadded.sum() in PHONE_DIGIT_COUNT &&
-        hasPhoneShape(
-            unpadded,
-            digits,
-            prefixed && groups.first() != ONE_DIGIT,
-            cued,
-            punctuationGrouped,
-        )
-}
-
-private fun hasPhoneShape(
-    groups: List<Int>,
-    digitsBeforeTrimming: Int,
-    internationallyPrefixed: Boolean,
-    cued: Boolean,
-    punctuationGrouped: Boolean,
-): Boolean =
-    when {
-        punctuationGrouped &&
-            groups.first() <= MOST_DIGITS_BEFORE_A_THOUSANDS_SEPARATOR &&
-            groups.drop(1).all { it == DIGITS_IN_A_THOUSANDS_GROUP } -> false
-        internationallyPrefixed -> true
-        groups.size == ONE_GROUP -> cued
-        !isGroupedWithinAPhoneNumbersLimits(groups) -> false
-        cued -> true
-        else -> isDialableWithoutACue(groups, digitsBeforeTrimming)
-    }
-
-private fun isGroupedWithinAPhoneNumbersLimits(groups: List<Int>): Boolean =
-    groups.size <= MOST_PHONE_GROUPS &&
-        groups.all { it <= MOST_DIGITS_IN_A_PHONE_GROUP } &&
-        groups.last() >= FEWEST_DIGITS_IN_THE_LAST_PHONE_GROUP
-
-private fun isDialableWithoutACue(
-    groups: List<Int>,
-    digitsBeforeTrimming: Int,
-): Boolean {
-    if (groups.size < FEWEST_GROUPS_NO_OTHER_NUMBER_USES) return false
-    val digits = groups.sum()
-    val endsLikeAnExchangeAndALine =
-        digits == DIGITS_IN_A_DIALABLE_NUMBER &&
-            groups.last() == DIGITS_IN_THE_LINE_GROUP &&
-            groups[groups.size - GROUPS_FROM_THE_END_TO_THE_LINES_OWN_GROUP] in
-            DIGITS_IN_THE_GROUP_BEFORE_THE_LINE
-    val strayDigitsBrokeUpADialableRun =
-        digitsBeforeTrimming == DIGITS_IN_A_DIALABLE_NUMBER &&
-            digitsBeforeTrimming > digits &&
-            groups.any { it == DIGITS_IN_AN_EXCHANGE_GROUP }
-    return endsLikeAnExchangeAndALine || strayDigitsBrokeUpADialableRun
-}
-
-private fun isSpreadOneDigitToASeparator(
-    groups: List<Int>,
-    separators: List<String>,
-): Boolean =
-    groups.size >= FEWEST_SINGLE_DIGIT_GROUPS &&
-        groups.all { it == ONE_DIGIT } &&
-        separators.all { SEPARATOR_A_SPREAD_OUT_NUMBER_USES.matches(it) }
 
 private fun holdsEmailAddress(folded: String): Boolean =
     WORDED_EMAIL.containsMatchIn(folded) ||
