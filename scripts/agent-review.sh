@@ -25,6 +25,7 @@ if ! git ls-files | grep -Eq "$invariant_bearing"; then
 fi
 
 required=(architecture security testing performance)
+defined_verdicts=(clean blocked)
 if printf '%s\n' "$changed" | grep -Eq "$invariant_bearing"; then
     required+=(invariants)
 fi
@@ -98,10 +99,18 @@ done
 
 while read -r dimension verdict; do
     [ -z "${dimension:-}" ] && continue
-    if [ "$verdict" = "blocked" ]; then
-        printf 'blocked: %s review at %s reports verdict blocked\n' "$dimension" "${head_sha:0:8}" >&2
-        fail=1
-    fi
+    case "$verdict" in
+        clean) ;;
+        blocked)
+            printf 'blocked: %s review at %s reports verdict blocked\n' "$dimension" "${head_sha:0:8}" >&2
+            fail=1
+            ;;
+        *)
+            printf 'malformed: %s review at %s reports verdict %s, which is not one of the verdicts the review format defines (%s); an undefined verdict fails closed rather than reading as clean, because a blocking verdict misspelled by one character used to pass\n' \
+                "$dimension" "${head_sha:0:8}" "$verdict" "${defined_verdicts[*]}" >&2
+            fail=1
+            ;;
+    esac
 done < <(printf '%s' "$at_head")
 
 unresolved=$(printf '%s' "$threads" | jq '[.[] | select(.isResolved == false)] | length')
@@ -110,6 +119,7 @@ if [ "$unresolved" -gt 0 ]; then
 fi
 
 if [ "$fail" -eq 0 ]; then
-    printf 'every required dimension (%s) reviewed at %s by an entitled author, none blocked\n' "${required[*]}" "${head_sha:0:8}"
+    printf 'every required dimension (%s) reviewed at %s by an entitled author, every verdict one of %s and none blocked\n' \
+        "${required[*]}" "${head_sha:0:8}" "${defined_verdicts[*]}"
 fi
 exit "$fail"
