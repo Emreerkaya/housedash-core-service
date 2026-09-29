@@ -30,4 +30,16 @@ class WordedAddressFilterTest {
             "the tap is at outlook, org of the building is unclear here",
         ).forEach(::assertNothingFound)
     }
+
+    @Test
+    fun `the comma for a dot arm is restricted to a listed label, and the obvious widening is wrong`() {
+        assertNothingFound("write to bob@mail,ru for the photos of the ceiling damage")
+        listOf(
+            "email me @bob, please have a look at the riser in the hall",
+            "the super @bob, please let him in when he arrives tomorrow",
+            "price @ two, however the board wants a third quote first",
+            "text @sam, before you come round tomorrow about the leak",
+        ).forEach(::assertNothingFound)
+        assertEmailAddress("the meter @bob, info is on the door of the cupboard here")
+    }
 }
