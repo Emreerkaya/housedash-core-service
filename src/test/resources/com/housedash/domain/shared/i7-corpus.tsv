@@ -52,23 +52,23 @@ ACCEPT	ACCEPT		radiator widths are\n1400\n1600\n1800	closed by the three-digit r
 ACCEPT	ACCEPT		1400 1600 1800 mm	closed by the three-digit rule
 ACCEPT	ACCEPT		invoices 4455 4456 4457	closed by the three-digit rule
 ACCEPT	ACCEPT		2026-09-24, 350 Example Street	why comma is not in PHONE_SEPARATOR
-ACCEPT	ACCEPT		rated 10,000, 12,000 or 14,000 BTU	the [2,3,2,3] thousands-list regression; closed by the exchange-and-line rule
-ACCEPT	ACCEPT		quotes were 1,500, 2,300, 3,100	the [2,3,2,3] thousands-list regression; closed by the exchange-and-line rule
-ACCEPT	ACCEPT		12,000, 18,000	the [2,3,2,3] thousands-list regression; closed by the exchange-and-line rule
-ACCEPT	ACCEPT		1,000, 2,500, 10,000	the [2,3,2,3] thousands-list regression; closed by the exchange-and-line rule
-ACCEPT	ACCEPT		1,500; 2,300; 3,100	the [2,3,2,3] thousands-list regression; closed by the exchange-and-line rule
-ACCEPT	REJECT	PhoneNumber	100, 150, 2000 mm	a [3,3,4] quantity list, not the [2,3,2,3] thousands-list class it was filed under; ACCEPT at 458c134
-ACCEPT	ACCEPT		1,200, 1,800, 2,400	the [2,3,2,3] thousands-list regression; closed by the exchange-and-line rule
-ACCEPT	ACCEPT		12,000, 18,000, 24,000	the [2,3,2,3] thousands-list regression; closed by the exchange-and-line rule
-ACCEPT	ACCEPT		Radiator widths:\n300\n450\n600	a [3,3,3] quantity list, not the [2,3,2,3] thousands-list class it was filed under; closed by the exchange-and-line rule
-ACCEPT	ACCEPT		Radiator sizes are 600 1200 1800 mm across the flat here	three-digit metric run; was pinned as a known cost, closed by the exchange-and-line rule
-ACCEPT	ACCEPT		Worktop depths 300 600 900 mm and the sink is undermount	three-digit metric run; was pinned as a known cost, closed by the exchange-and-line rule
-ACCEPT	ACCEPT		Tile sizes 200 300 400 600 needed for the bathroom floor	three-digit metric run; was pinned as a known cost, closed by the exchange-and-line rule
-ACCEPT	ACCEPT		Loft insulation 100 200 270 mm depths quoted by the last	three-digit metric run; was pinned as a known cost, closed by the exchange-and-line rule
-ACCEPT	ACCEPT		Skirting lengths 240 300 360 cm needed across three rooms	three-digit metric run; was pinned as a known cost, closed by the exchange-and-line rule
-ACCEPT	ACCEPT		Previous quotes were 120 150 180 for the same tap repair	three-digit metric run; was pinned as a known cost, closed by the exchange-and-line rule
-ACCEPT	ACCEPT		Previous quotes were 1000, 300, 600 for the same repair	three-digit metric run; was pinned as a known cost, closed by the exchange-and-line rule
-ACCEPT	ACCEPT		Apartment 3B, 250 sq ft, quotes 120 150 180 for the work	three-digit metric run; was pinned as a known cost, closed by the exchange-and-line rule
+ACCEPT	ACCEPT		rated 10,000, 12,000 or 14,000 BTU	D288; the [2,3,2,3] thousands-list regression, closed on both arms: the exchange-and-line rule with no cue, and the list-of-numbers veto under one
+ACCEPT	ACCEPT		quotes were 1,500, 2,300, 3,100	D288; the [2,3,2,3] thousands-list regression, closed on both arms: the exchange-and-line rule with no cue, and the list-of-numbers veto under one
+ACCEPT	ACCEPT		12,000, 18,000	D288; the [2,3,2,3] thousands-list regression, closed on both arms: the exchange-and-line rule with no cue, and the list-of-numbers veto under one
+ACCEPT	ACCEPT		1,000, 2,500, 10,000	D288; the [2,3,2,3] thousands-list regression, closed on both arms: the exchange-and-line rule with no cue, and the list-of-numbers veto under one
+ACCEPT	ACCEPT		1,500; 2,300; 3,100	D288; the [2,3,2,3] thousands-list regression, closed on both arms: the exchange-and-line rule with no cue, and the list-of-numbers veto under one
+ACCEPT	REJECT	PhoneNumber	100, 150, 2000 mm	D288; a [3,3,4] quantity list, and the list veto deliberately spares this grouping because 917, 555, 0199 is the same shape and is a pinned rejection, so this cannot close
+ACCEPT	ACCEPT		1,200, 1,800, 2,400	D288; the [2,3,2,3] thousands-list regression, closed on both arms: the exchange-and-line rule with no cue, and the list-of-numbers veto under one
+ACCEPT	ACCEPT		12,000, 18,000, 24,000	D288; the [2,3,2,3] thousands-list regression, closed on both arms: the exchange-and-line rule with no cue, and the list-of-numbers veto under one
+ACCEPT	ACCEPT		Radiator widths:\n300\n450\n600	D288; a [3,3,3] quantity list, closed with no cue only: its numbers are separated by a line break and not by a thousands mark, so the list veto does not reach it and the cued twin is rowed below
+ACCEPT	ACCEPT		Radiator sizes are 600 1200 1800 mm across the flat here	D288; three-digit metric run, closed with no cue only: a space is not a list mark, so the list veto does not reach it and the cued twins are rowed below
+ACCEPT	ACCEPT		Worktop depths 300 600 900 mm and the sink is undermount	D288; three-digit metric run, closed with no cue only: a space is not a list mark, so the list veto does not reach it and the cued twins are rowed below
+ACCEPT	ACCEPT		Tile sizes 200 300 400 600 needed for the bathroom floor	D288; three-digit metric run, closed with no cue only: a space is not a list mark, so the list veto does not reach it and the cued twins are rowed below
+ACCEPT	ACCEPT		Loft insulation 100 200 270 mm depths quoted by the last	D288; three-digit metric run, closed with no cue only: a space is not a list mark, so the list veto does not reach it and the cued twins are rowed below
+ACCEPT	ACCEPT		Skirting lengths 240 300 360 cm needed across three rooms	D288; three-digit metric run, closed with no cue only: a space is not a list mark, so the list veto does not reach it and the cued twins are rowed below
+ACCEPT	ACCEPT		Previous quotes were 120 150 180 for the same tap repair	D288; three-digit metric run, closed with no cue only: a space is not a list mark, so the list veto does not reach it and the cued twins are rowed below
+ACCEPT	ACCEPT		Previous quotes were 1000, 300, 600 for the same repair	D288; three-digit metric run, closed with no cue only: a space is not a list mark, so the list veto does not reach it and the cued twins are rowed below
+ACCEPT	ACCEPT		Apartment 3B, 250 sq ft, quotes 120 150 180 for the work	D288; three-digit metric run, closed with no cue only: a space is not a list mark, so the list veto does not reach it and the cued twins are rowed below
 ACCEPT	ACCEPT		sizes 100, 150, 200 mm	clean at both SHAs and must stay so
 ACCEPT	ACCEPT		10,000 12,000 14,000 BTU	clean at both SHAs and must stay so
 ACCEPT	ACCEPT		120,000, 180,000	clean at both SHAs and must stay so
@@ -82,8 +82,8 @@ ACCEPT	ACCEPT		10001-1234	clean at both SHAs and must stay so
 ACCEPT	ACCEPT		2019, 2021, 2023	clean at both SHAs and must stay so
 ACCEPT	ACCEPT		$90-140	clean at both SHAs and must stay so
 ACCEPT	ACCEPT		9:30, 10:00, 11:30	clean at both SHAs and must stay so
-ACCEPT	ACCEPT		The old unit is rated 10,000, 12,000 or 14,000 BTU depending on the label I read	through Description.of; closed by the exchange-and-line rule
-ACCEPT	ACCEPT		Three quotes so far for the boiler swap: 12,000, 18,000 and 22,000 were mentioned	through Description.of; closed by the exchange-and-line rule
+ACCEPT	ACCEPT		The old unit is rated 10,000, 12,000 or 14,000 BTU depending on the label I read	D288; through Description.of, closed on both arms: the exchange-and-line rule with no cue, and the list-of-numbers veto under one
+ACCEPT	ACCEPT		Three quotes so far for the boiler swap: 12,000, 18,000 and 22,000 were mentioned	D288; through Description.of, closed on both arms: the exchange-and-line rule with no cue, and the list-of-numbers veto under one
 REJECT	REJECT	PhoneNumber	Kitchen tap drips from the base, reach me on 917,555,0199 to arrange a look	through Description.of; the fix working
 REJECT	ACCEPT		Kitchen tap drips from the base, reach me on 917 555 01 99 to arrange a look	through Description.of; a chosen gap that is dialable
 QUESTION	ACCEPT		bob!@gmail.com	RFC-valid; deliverability is the open half, so unlabelled
@@ -186,3 +186,13 @@ REJECT	REJECT	EmailAddress	bob at bobsplumbing(dot)com is where the invoices go 
 REJECT	REJECT	EmailAddress	bob at bobsplumbing[dot]com is where the invoices go for this job	D305; the fix varied the host in the spaced rows and the spacing in the consumer-host rows, never crossed
 REJECT	REJECT	EmailAddress	bob(at)bobsplumbing(dot)com is where the invoices go for this job	D305; the worded at is read with the same spacings as the worded dot, on any host
 ACCEPT	ACCEPT		replace washers 1,2,3,4,5,6,7,8,9 in that order please now	D292; the unrowed twin of the two rows above, refused until this commit at nine single digits
+ACCEPT	REJECT	PhoneNumber	boiler serviced 2019 2021 2023 and now it leaks, call me anytime	D288; the cue residual priced rather than left at one row. The numbers are separated by a space, which is not a list mark, so the list veto does not reach it
+ACCEPT	REJECT	PhoneNumber	Radiator widths are 1400 1600 1800 mm, call me about the sizes	D288; the cue residual, a space separated list of four-digit numbers
+ACCEPT	REJECT	PhoneNumber	the invoices are 4455 4456 4457, call me about the three visits	D288; the cue residual, a space separated list of four-digit numbers
+ACCEPT	REJECT	PhoneNumber	the unit is rated 10,000 12,000 14,000 BTU on the label, call me	D288; the cue residual, thousands-formatted numbers separated by a space rather than by a mark
+ACCEPT	REJECT	PhoneNumber	the fuse blew on 2026-09-24, 350 Example Street, call me back	D288; the cue residual, a date beside a street number
+ACCEPT	REJECT	PhoneNumber	the two quotes were £12,000, £18,000 for the work, call me	D288; the cue residual, a list mark carrying a currency sign, so the separator is not a list mark
+ACCEPT	ACCEPT		the unit is rated 10,000, 12,000 or 14,000 BTU, call me anytime	D288; the cued twin of line 55, which the corpus could not see before, so the delta could not see the class
+ACCEPT	ACCEPT		the three quotes were 1,500, 2,300, 3,100 for the job, call me	D288; the cued twin of line 56
+ACCEPT	ACCEPT		boiler serviced 2019, 2021, 2023 and now it leaks, call me anytime	D288; the sentence the finding was reported with, a list of four-digit numbers separated by a list mark
+ACCEPT	ACCEPT		the swap was quoted at 12,000, 18,000, 24,000 so far, call me	D288; the cued twin of line 62
