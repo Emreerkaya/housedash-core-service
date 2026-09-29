@@ -126,6 +126,44 @@ class NumberShapeFilterTest {
     }
 
     @Test
+    fun `a run spread one digit to a separator is a list of numbers when a list mark ends each number`() {
+        listOf(
+            "the drill bits I need are 1.5, 2.5, 3.5, 4.5, 5.5 mm for the bracket",
+            "I need 1/2, 3/4, 3/8, 5/8, 7/8 fittings for the bathroom job please",
+            "torque them to 1.2, 1.4, 1.6, 1.8, 2.0 Nm in sequence",
+            "0.5, 1.0, 1.5, 2.0, 2.5, 3.0 mm shims are what I have on hand",
+            "sizes 1,5; 2,5; 3,5; 4,5; 5,5 mm",
+            "the firmware went 1.2.3, 1.2.4, 1.3.0, 2.0.1 before the boiler died",
+            "concrete mix ratios 1:2:4, 1:3:6, 1:1:2, 1:2:3 for the slab",
+            "the dip switches are set 1, 0, 1, 1, 0, 0, 1, 0, 1, 1 on the board",
+            "2x4, 2x6, 4x4, 6x6, 2x8 lumber for the deck frame",
+            "I need 1,500; 2,300; 3,100 of them for the three floors",
+        ).forEach(::assertNothingFound)
+    }
+
+    @Test
+    fun `the list veto on the spread arm asks for no cue, because the cue is all that separates the two`() {
+        assertPhoneNumber("9, 1, 7, 5, 5, 5, 0, 1, 9, 9 is my cell, please ring about the radiator")
+        assertNothingFound("the dip switches are set 1, 0, 1, 1, 0, 0, 1, 0, 1, 1 on the board")
+        assertEquals(
+            DIALABLE_DIGITS.length,
+            "1011001011".length,
+            "these two runs are digit for digit the same shape and the same length, one is a phone number and " +
+                "one is a row of dip switches, and no property of the digits or of the punctuation separates " +
+                "them. What separates them is that the first says ring and the second says switches, so the " +
+                "list veto this arm now reads is conditioned on there being no cue nearby rather than on " +
+                "anything about the run. A cued list of quantities spread one digit to a comma is therefore " +
+                "still refused, and that residue is a product judgement rather than a defect in this rule",
+        )
+    }
+
+    @Test
+    fun `a cued dialable number broken up by a list mark is caught, which is the conjunct this arm rests on`() {
+        assertPhoneNumber("ring me on 123456,789, 555 for updates")
+        assertNothingFound("quotes came in at 1,200, 1,800, 2,400 and none included parts")
+    }
+
+    @Test
     fun `spaces in a mixed spelling group the run, and a grouping no number uses stays an open gap`() {
         assertPhoneNumber("9,1,7 5,5,5 0,1,9,9 is my cell, please ring about the radiator")
         assertPhoneNumber("9.1.7 5.5.5 0.1.9.9 is my cell, please ring about the radiator")
@@ -242,10 +280,44 @@ class NumberShapeFilterTest {
     fun `these cued dialable numbers are a known cost of that floor and not a specification`() {
         listOf(
             "my number is 917 555 01 99 if you need it",
+            "call me on 917 555 01 99 about the leak",
+            "call me on 91 7555 01 99 about the leak",
             "call me on 12 34 56 78 90",
             "text me on 9175 5501 99 today",
             "phone me on 917-555-01-99 tomorrow",
         ).forEach(::assertNothingFound)
+    }
+
+    @Test
+    fun `a cue asks for a count of digits and not for a group narrow enough to be a phone group`() {
+        listOf(
+            "call me on 917 5550199 about the leak",
+            "call me on 212 5551234 about the leak",
+            "call me on 2125551 234 about the leak",
+            "Kitchen tap drips from the base, text me at 917 5550199 to arrange a look",
+        ).forEach(::assertPhoneNumber)
+    }
+
+    @Test
+    fun `the two limits a cue does not lower are how many groups there are and how long the last one is`() {
+        assertNothingFound("call me about the 60 40 30 20 10 split")
+        assertNothingFound("call me when the 1/2 3/4 3/8 5/8 7/8 fittings arrive")
+        assertEquals(
+            listOf(true, false, false),
+            listOf(
+                isFound("call me on 917 5550199 about the leak"),
+                isFound("call me on 91 75 55 01 99 12 345 about the leak"),
+                isFound("call me on 917 555 019 90 about the leak"),
+            ),
+            "ADR-0007 says a cue lowers the shape requirement and asks only for a count of digits, and the " +
+                "arm read the whole grouping limit before the count, so a real number typed without one space " +
+                "was stored: 917 5550199 beside a cue is ten digits in two groups and its second group is " +
+                "seven digits long, one over what a phone group may hold. A cue no longer lowers how many " +
+                "groups a number may have, because eight groups of one digit beside a cue is the quantity " +
+                "list this arm exists not to refuse, and it no longer lowers how long the last group must be, " +
+                "because a two-digit tail is what a spacing list ends with. Those two are what is left of the " +
+                "limit under a cue, and both are measured here rather than described",
+        )
     }
 
     @Test

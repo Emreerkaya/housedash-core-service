@@ -46,15 +46,20 @@ the domain publishes to be bound to a record here, to defer to another constant
 that is, or to be named in the test as deciding nothing a Nester sees. A new
 published constant arrives as a failure naming it, not as a line nobody reviews.
 
-What it does not do is bind the constants the domain keeps private. There are
-forty-nine of them and most are arithmetic, a name for a small literal or a
-fragment of a pattern, so forty-seven are pinned as a set of names rather than
-excused one by one: adding one
+What it does not do is bind the constants the domain keeps private. There are 48
+of them and most are arithmetic, a name for a small literal or a fragment of a
+pattern, so 46 are pinned as a set of names rather than excused one by one:
+adding one
 reddens the same test with its name in the failure, and whoever adds it decides
 then whether it is a product decision. Two of them are product decisions with records of
 their own, ADR-0005 and ADR-0007, and both are bound by value through the same
 test, which is how a private constant can be bound without the derived set
-seeing it.
+seeing it. 48 and 46 are what the test's own regex counts, not what this
+paragraph remembers: both were one too high for a commit, because a sentence
+spelling a number as a word is invisible to a binding that compares numerals.
+The binding that would read this sentence is not built; until it is, these two
+figures are prose and are re-measured by running the test rather than by reading
+here.
 
 ## Consequences
 

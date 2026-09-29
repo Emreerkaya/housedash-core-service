@@ -20,7 +20,7 @@ private const val NAME_GROUP = 2
 
 private const val REST_OF_THE_OPENING_LINE_GROUP = 3
 
-private const val DECLARATIONS_THE_FILTER_HOLDS = 136
+private const val DECLARATIONS_THE_FILTER_HOLDS = 137
 
 private const val PATTERNS_THE_FILTER_DECLARES = 54
 
@@ -107,7 +107,7 @@ private val FIXED_LENGTH = Regex("""^\{\d+\}$""")
 
 private val OPENS_A_UNICODE_PROPERTY = Regex("""^[pP]$""")
 
-private const val QUANTIFIERS_THE_FILTER_HOLDS = 99
+private const val QUANTIFIERS_THE_FILTER_HOLDS = 98
 
 private const val ESCAPE_AND_ONE_CHARACTER = 2
 

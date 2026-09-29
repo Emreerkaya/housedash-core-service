@@ -159,9 +159,12 @@ private class HowTheRunIsPunctuated(
     groups: List<Int>,
     separators: List<String>,
 ) {
-    val groupedByTheThousandsMarks = isGroupedByTheThousandsMarks(separators)
+    val groupedByTheThousandsMarks =
+        separators.isNotEmpty() && separators.all { THOUSANDS_GROUPED_SEPARATOR.matches(it) }
 
     val readsAsAListOfNumbers = groupedByTheThousandsMarks && readsAsAListOfNumbers(groups, separators)
+
+    val aListMarkEndsANumber = readsAsAListOfNumbers(groups, separators)
 }
 
 private fun wordsAround(
@@ -189,7 +192,7 @@ private fun isAPhoneNumber(
     val digits = groups.sum()
     if (digits in PHONE_DIGIT_COUNT &&
         (
-            isSpreadOneDigitToASeparator(groups, separators) ||
+            isSpreadOneDigitToASeparator(groups, separators, words, punctuation) ||
                 hasPhoneShape(groups, digits, prefixed, words, punctuation)
         )
     ) {
@@ -207,9 +210,6 @@ private fun isAPhoneNumber(
         )
 }
 
-private fun isGroupedByTheThousandsMarks(separators: List<String>): Boolean =
-    separators.isNotEmpty() && separators.all { THOUSANDS_GROUPED_SEPARATOR.matches(it) }
-
 private fun hasPhoneShape(
     groups: List<Int>,
     digitsBeforeTrimming: Int,
@@ -222,8 +222,8 @@ private fun hasPhoneShape(
         punctuation.readsAsAListOfNumbers -> false
         internationallyPrefixed -> true
         groups.size == ONE_GROUP -> words.cued
+        words.cued -> isDialableWithACue(groups, digitsBeforeTrimming)
         !isGroupedWithinAPhoneNumbersLimits(groups) -> false
-        words.cued -> digitsBeforeTrimming >= DIGITS_IN_A_DIALABLE_NUMBER
         else -> isDialableWithoutACue(groups, digitsBeforeTrimming, words.namedOtherwise)
     }
 
@@ -235,6 +235,14 @@ private fun isGroupedWithinAPhoneNumbersLimits(groups: List<Int>): Boolean =
     groups.size <= MOST_PHONE_GROUPS &&
         groups.all { it <= MOST_DIGITS_IN_A_PHONE_GROUP } &&
         groups.last() >= FEWEST_DIGITS_IN_THE_LAST_PHONE_GROUP
+
+private fun isDialableWithACue(
+    groups: List<Int>,
+    digitsBeforeTrimming: Int,
+): Boolean =
+    groups.size <= MOST_PHONE_GROUPS &&
+        groups.last() >= FEWEST_DIGITS_IN_THE_LAST_PHONE_GROUP &&
+        digitsBeforeTrimming >= DIGITS_IN_A_DIALABLE_NUMBER
 
 private fun isDialableWithoutACue(
     groups: List<Int>,
@@ -294,7 +302,10 @@ private fun readsAsAListOfNumbers(
 private fun isSpreadOneDigitToASeparator(
     groups: List<Int>,
     separators: List<String>,
+    words: WordsAroundTheRun,
+    punctuation: HowTheRunIsPunctuated,
 ): Boolean =
-    groups.size >= DIGITS_IN_A_DIALABLE_NUMBER &&
+    (words.cued || !punctuation.aListMarkEndsANumber) &&
+        groups.size >= DIGITS_IN_A_DIALABLE_NUMBER &&
         groups.all { it == ONE_DIGIT } &&
         theSpacesGroupTheRunAsANumberIsGrouped(groups, separators)
