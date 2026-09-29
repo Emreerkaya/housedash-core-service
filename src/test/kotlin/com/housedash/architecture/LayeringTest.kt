@@ -480,6 +480,23 @@ class LayeringTest {
     }
 
     @Test
+    fun `the folding precondition on the number shape guard is confined by a call rule`() {
+        noClasses()
+            .that()
+            .resideOutsideOfPackage(sharedKernelPackage)
+            .should()
+            .callMethodWhere(callTo("holdsPhoneNumberInAlreadyFoldedText", sharedKernelPackage))
+            .`as`(
+                "holdsPhoneNumberInAlreadyFoldedText is internal so that ContactDetail.kt can call it across a " +
+                    "file boundary, and internal is module-wide in a single-module build, so visibility does " +
+                    "not confine who may call it. It carries a precondition the type system cannot express: " +
+                    "its argument must already have been through the confusable and spacing fold, and on raw " +
+                    "text it answers a different question. The name says so and this rule holds anyone outside " +
+                    "$sharedKernelPackage to it",
+            ).check(codebase)
+    }
+
+    @Test
     fun `both mint boundaries are armed tripwires today because no app or adapters class exists yet`() {
         val outsideTheDomain =
             codebase
