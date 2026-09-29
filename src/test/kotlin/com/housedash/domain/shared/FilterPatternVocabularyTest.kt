@@ -103,10 +103,135 @@ private fun declarationsIn(path: String): List<Declaration> {
     return found
 }
 
+private val FIXED_LENGTH = Regex("""^\{\d+\}$""")
+
+private val OPENS_A_UNICODE_PROPERTY = Regex("""^[pP]$""")
+
+private const val QUANTIFIERS_THE_FILTER_HOLDS = 99
+
+private const val ESCAPE_AND_ONE_CHARACTER = 2
+
+private const val GROUP_OPENING_AND_ITS_QUESTION_MARK = 2
+
+private const val POSSESSIVE = '+'
+
+private data class Quantifier(
+    val holder: String,
+    val text: String,
+) {
+    val isSafe: Boolean get() = text.last() == POSSESSIVE || FIXED_LENGTH.matches(text)
+}
+
+private fun quantifierAt(
+    pattern: String,
+    index: Int,
+): String? {
+    val base =
+        when (pattern[index]) {
+            '{' -> pattern.indexOf('}', index).takeIf { it > index }?.let { pattern.substring(index, it + 1) }
+            '*', '+', '?' -> pattern[index].toString()
+            else -> null
+        } ?: return null
+    val after = index + base.length
+    val modifier = pattern.getOrNull(after)
+    return if (modifier == '+' || modifier == '?') base + modifier else base
+}
+
+private fun endOfAnInterpolation(
+    pattern: String,
+    from: Int,
+): Int {
+    var depth = 0
+    var index = from
+    while (index < pattern.length) {
+        if (pattern[index] == '{') depth += 1
+        if (pattern[index] == '}') {
+            depth -= 1
+            if (depth == 0) return index + 1
+        }
+        index += 1
+    }
+    return pattern.length
+}
+
+private fun charactersInAnEscape(
+    pattern: String,
+    index: Int,
+): Int {
+    val opensAProperty =
+        OPENS_A_UNICODE_PROPERTY.matches(pattern.getOrNull(index + 1)?.toString().orEmpty()) &&
+            pattern.getOrNull(index + 2) == '{'
+    if (!opensAProperty) return ESCAPE_AND_ONE_CHARACTER
+    return (pattern.indexOf('}', index + 2).takeIf { it > index }?.plus(1) ?: pattern.length) - index
+}
+
+private fun charactersThatAreNotAQuantifier(
+    pattern: String,
+    index: Int,
+): Int =
+    when {
+        pattern[index] == '\\' -> charactersInAnEscape(pattern, index)
+        pattern[index] == '(' && pattern.getOrNull(index + 1) == '?' -> GROUP_OPENING_AND_ITS_QUESTION_MARK
+        pattern[index] == '$' && pattern.getOrNull(index + 1) == '{' ->
+            endOfAnInterpolation(pattern, index + 1) - index
+        pattern[index] == '$' ->
+            1 + pattern.drop(index + 1).takeWhile { it == '_' || it.isLetterOrDigit() }.length
+        else -> 0
+    }
+
+private data class StepThroughAPattern(
+    val characters: Int,
+    val quantifier: String?,
+    val insideACharacterClass: Boolean,
+)
+
+private fun stepThrough(
+    pattern: String,
+    index: Int,
+    insideACharacterClass: Boolean,
+): StepThroughAPattern {
+    val notAQuantifier = charactersThatAreNotAQuantifier(pattern, index)
+    if (notAQuantifier > 0) return StepThroughAPattern(notAQuantifier, null, insideACharacterClass)
+    if (insideACharacterClass) return StepThroughAPattern(1, null, pattern[index] != ']')
+    if (pattern[index] == '[') return StepThroughAPattern(1, null, true)
+    val quantifier = quantifierAt(pattern, index)
+    return StepThroughAPattern(quantifier?.length ?: 1, quantifier, false)
+}
+
+private fun quantifiersIn(declaration: Declaration): List<Quantifier> {
+    val pattern = declaration.text
+    val found = mutableListOf<Quantifier>()
+    var index = 0
+    var insideACharacterClass = false
+    while (index < pattern.length) {
+        val step = stepThrough(pattern, index, insideACharacterClass)
+        step.quantifier?.let { found.add(Quantifier("${declaration.file}:${declaration.name}", it)) }
+        insideACharacterClass = step.insideACharacterClass
+        index += step.characters
+    }
+    return found
+}
+
 private fun linesCompilingAPattern(path: String): List<Int> =
     sourceFile(path)
         .readLines()
         .mapIndexedNotNull { index, line -> index.takeIf { COMPILES_A_PATTERN.containsMatchIn(line) } }
+
+private val QUANTIFIERS_THAT_CAN_BACKTRACK_BY_DESIGN =
+    mapOf(
+        ("ContactDetail.kt:EMAIL_TOP_LEVEL_LABEL" to "{2,24}") to
+            "matched against one already-extracted label with matches rather than searched for, so there is " +
+            "nothing for it to backtrack over",
+        ("ContactDetail.kt:BANK_ACCOUNT" to "{6,12}") to
+            "followed by a negative lookahead for another digit, which is what a possessive count would have " +
+            "done, so making it possessive changes nothing and removing the lookahead is the real risk",
+        ("ContactDetail.kt:IBAN_CANDIDATE" to "{1,3}") to
+            "the last of an alternation inside an optional group, and every group around it is possessive",
+        ("NumberShape.kt:UNQUALIFIED_NUMBER_CUE" to "{0,4}") to
+            "inside a negative lookbehind, whose width Java already requires to be bounded",
+        ("NumberShape.kt:UNQUALIFIED_NUMBER_CUE" to "?") to
+            "one optional letter on a literal word, where possessive and greedy accept the same inputs",
+    )
 
 class FilterPatternVocabularyTest {
     @Test
@@ -148,6 +273,43 @@ class FilterPatternVocabularyTest {
                 "filter actually matches with was outside it, including the compiled form of the table whose " +
                 "return this test exists to catch. Read as patterns: " +
                 declarations.filter { it.isPattern }.joinToString(", ") { "${it.file}:${it.name}" },
+        )
+    }
+
+    @Test
+    fun `every quantifier in the filter is possessive or fixed length, and the exceptions are derived`() {
+        val patterns = SOURCES_THE_FILTER_IS_WRITTEN_IN.flatMap(::declarationsIn).filter { it.isPattern }
+        val quantifiers = patterns.flatMap(::quantifiersIn)
+        assertEquals(
+            QUANTIFIERS_THE_FILTER_HOLDS,
+            quantifiers.size,
+            "this is the denominator, and without it a walk that found nothing would satisfy the assertion " +
+                "below by reporting no exception. Move it in the commit that adds or removes a quantifier",
+        )
+        assertEquals(
+            QUANTIFIERS_THAT_CAN_BACKTRACK_BY_DESIGN.keys,
+            quantifiers.filterNot { it.isSafe }.map { it.holder to it.text }.toSet(),
+            "an exception named here is no longer in the source, so the exception is now a silent widening of " +
+                "what this test lets through, and one not named here is new",
+        )
+    }
+
+    @Test
+    fun `no quantifier in the filter can backtrack except the five this test names with a reason`() {
+        val patterns = SOURCES_THE_FILTER_IS_WRITTEN_IN.flatMap(::declarationsIn).filter { it.isPattern }
+        val backtracking = patterns.flatMap(::quantifiersIn).filterNot { it.isSafe }
+        val unexpected =
+            backtracking.filterNot { (it.holder to it.text) in QUANTIFIERS_THAT_CAN_BACKTRACK_BY_DESIGN.keys }
+        assertEquals(
+            emptyList(),
+            unexpected,
+            "the filter is not a ReDoS because every quantifier in it is possessive or fixed length, and no " +
+                "test would have noticed a dropped plus. That claim was made three times and never built, and " +
+                "the list of exceptions it named was extended twice by reading the source. This test derives " +
+                "the set instead: it walks each pattern, skipping escapes, character classes, Unicode property " +
+                "names and group-opening question marks, and reports every quantifier that is neither " +
+                "possessive nor a fixed count. Whoever adds one decides here whether it is deliberate. " +
+                "Unexpected: " + unexpected.joinToString(", ") { "${it.holder} ${it.text}" },
         )
     }
 
