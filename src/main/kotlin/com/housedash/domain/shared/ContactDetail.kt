@@ -359,7 +359,7 @@ private val CASH_TAG = Regex("""(?<![A-Za-z0-9])\$[A-Za-z][A-Za-z0-9_]{1,30}+"""
 
 private val SORT_CODE =
     Regex(
-        """(?i)\bsort\p{Zs}?+(?:code)?+\p{Zs}?+:?+\p{Zs}?+""" +
+        """(?i)\bsort[\p{Zs}\-_]{0,2}+code\p{Zs}?+:?+\p{Zs}?+""" +
             """\p{Nd}{2}$SEPARATOR_OR_NONE_BETWEEN_TWO_GROUPS\p{Nd}{2}""" +
             """$SEPARATOR_OR_NONE_BETWEEN_TWO_GROUPS\p{Nd}{2}(?!\p{Nd})""",
     )

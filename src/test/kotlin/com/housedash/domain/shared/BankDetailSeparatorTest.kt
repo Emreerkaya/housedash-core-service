@@ -65,4 +65,30 @@ class BankDetailSeparatorTest {
         assertNothingFound("pay it to GB82xWESTx1234x5698x7654x32 when the work is done")
         assertNothingFound("pay it to GB83 WEST 1234 5698 7654 32 when the work is done")
     }
+
+    @Test
+    fun `the word code is what makes sort a bank detail cue, because sort on its own is an ordinary verb`() {
+        listOf(
+            "can you sort 20, 30, 40 amp fuses for the consumer unit",
+            "sort 12, 15, 18 mm washers into bags before you come",
+            "please sort 10 - 20 - 30 of the tiles by size before you come",
+            "could you sort out the 1/2 and 3/4 fittings when you arrive",
+            "sort 04-00-04 of the tiles by size",
+        ).forEach(::assertNothingFound)
+        assertPaymentLink("sort code 04-00-04 is on the statement")
+        assertPaymentLink("sortcode 04-00-04 is on the statement")
+        assertPaymentLink("sort-code 04 00 04 is on the statement")
+        assertEquals(
+            emptyList(),
+            separatorsTheMarksSpell().filterNot { separators ->
+                ContactDetail.PaymentLink in
+                    contactDetailsIn("sort code ${joinedBy(listOf("12", "34", "56"), separators)} for the transfer")
+            },
+            "the widening that took this arm from eleven of fifty-five spellings to all of them also made the " +
+                "bare verb a cue, and zero corpus flips said nothing about that because the corpus held no row " +
+                "with sort as a verb. Every spelling the widening bought is still bought — this leg is the " +
+                "same sweep as the one above, stated again against the narrowed cue so the narrowing is priced " +
+                "rather than assumed",
+        )
+    }
 }

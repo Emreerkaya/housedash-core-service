@@ -205,6 +205,8 @@ class ContactFilterTest {
             "DE89370400440532013000",
             "sort 04-00-04 acct 12345678",
             "sort code 040004",
+            "sortcode 04-00-04",
+            "sort-code 04 00 04",
             "account number 12345678",
         ).forEach { text ->
             assertTrue(ContactDetail.PaymentLink in contactDetailsIn(text), text)

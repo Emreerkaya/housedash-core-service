@@ -11,7 +11,7 @@ private const val SENTENCES_THE_SET_HOLDS = 74
 
 private const val FAMILIES_THE_SET_HOLDS = 16
 
-private const val SENTENCES_THE_FILTER_REFUSES = 21
+private const val SENTENCES_THE_FILTER_REFUSES = 11
 
 private const val COLUMNS_IN_A_ROW = 3
 
