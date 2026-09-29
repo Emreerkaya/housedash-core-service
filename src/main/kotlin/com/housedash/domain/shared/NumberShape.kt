@@ -136,8 +136,6 @@ private const val MOST_DIGITS_BEFORE_A_THOUSANDS_SEPARATOR = 3
 
 private const val DIGITS_IN_A_THOUSANDS_GROUP = 3
 
-private const val MOST_MARKS_ONE_SEPARATOR_MAY_HOLD = 1
-
 private const val NO_MARK = 0
 
 private const val ONE_CHUNK = 1
@@ -299,5 +297,4 @@ private fun isSpreadOneDigitToASeparator(
 ): Boolean =
     groups.size >= DIGITS_IN_A_DIALABLE_NUMBER &&
         groups.all { it == ONE_DIGIT } &&
-        separators.all { marksIn(it) <= MOST_MARKS_ONE_SEPARATOR_MAY_HOLD } &&
         theSpacesGroupTheRunAsANumberIsGrouped(groups, separators)
