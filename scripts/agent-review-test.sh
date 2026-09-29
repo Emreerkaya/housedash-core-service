@@ -67,10 +67,10 @@ pass=0
 fail=0
 
 check() {
-    local name=$1 want=$2 changed=$3 reviews=$4 wanted_text=${5:-}
+    local name=$1 want=$2 changed=$3 reviews=$4 wanted_text=${5:-} threads=${6:-[]} unwanted_text=${7:-}
     local out got
     out=$(PATH="${stub_dir}:${PATH}" \
-        STUB_CHANGED="$changed" STUB_REVIEWS="$reviews" STUB_THREADS='[]' \
+        STUB_CHANGED="$changed" STUB_REVIEWS="$reviews" STUB_THREADS="$threads" \
         PR_NUMBER=1 HEAD_SHA="$sha" GITHUB_REPOSITORY=Emreerkaya/housedash-core-service \
         bash "$gate" 2>&1)
     got=$?
@@ -81,6 +81,11 @@ check() {
     fi
     if [ -n "$wanted_text" ] && ! printf '%s' "$out" | grep -q "$wanted_text"; then
         printf 'FAIL %s: exit %s was right but the message never said %s\n%s\n\n' "$name" "$got" "$wanted_text" "$out" >&2
+        fail=$((fail + 1))
+        return
+    fi
+    if [ -n "$unwanted_text" ] && printf '%s' "$out" | grep -q "$unwanted_text"; then
+        printf 'FAIL %s: exit %s was right but the message said %s and must not\n%s\n\n' "$name" "$got" "$unwanted_text" "$out" >&2
         fail=$((fail + 1))
         return
     fi
@@ -211,17 +216,18 @@ check 'a body with CRLF line endings still counts, as the web UI sends them' 0 "
 
 check 'no reviews at all blocks' 1 "$untouched" '[]' 'missing: no architecture review'
 
-for short in 1111111 111111111111111111111111111111111111111; do
+for short in 1111111 111111111111111111111111111111111111111 11111111111111111111111111111111111111111 \
+    ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ 111111111111111111111111111111111111111g; do
     out=$(PATH="${stub_dir}:${PATH}" \
         STUB_CHANGED="$untouched" STUB_REVIEWS="$four_dimensions" STUB_THREADS='[]' \
         PR_NUMBER=1 HEAD_SHA="$short" GITHUB_REPOSITORY=Emreerkaya/housedash-core-service \
         bash "$gate" 2>&1)
     got=$?
     if [ "$got" -ne 2 ] || ! printf '%s' "$out" | grep -q 'is not a full commit sha'; then
-        printf 'FAIL a HEAD_SHA of %s characters must be refused: exit %s\n%s\n\n' "${#short}" "$got" "$out" >&2
+        printf 'FAIL a HEAD_SHA of %s must be refused: exit %s\n%s\n\n' "$short" "$got" "$out" >&2
         fail=$((fail + 1))
     else
-        printf 'ok a HEAD_SHA of %s characters is refused\n' "${#short}"
+        printf 'ok a HEAD_SHA of %s is refused\n' "$short"
         pass=$((pass + 1))
     fi
 done
@@ -272,20 +278,31 @@ probe_repo 'a checkout no trigger pattern matches refuses to run at all' \
 probe_repo 'a checkout whose domain layer moved refuses to run even though the rest is there' \
     'can no longer see the layer it guards' README.md scripts/agent-review.sh .github/workflows/process-review.yml
 
-spelled() {
-    local name=$1 pattern=$2
-    if grep -qF -- "$pattern" "$gate"; then
-        printf 'ok %s\n' "$name"
-        pass=$((pass + 1))
-    else
-        printf 'FAIL %s: the gate no longer spells %s\n\n' "$name" "$pattern" >&2
-        fail=$((fail + 1))
-    fi
-}
+check 'a trailer sha one character too long reads as missing, though the trailer length clause alone cannot be isolated because HEAD_SHA is already forty lowercase hex' 1 "$untouched" \
+    "$(set_of "$(review architecture clean "${sha}1")" "$(review security clean)" "$(review testing clean)" "$(review performance clean)")" \
+    'missing: no architecture review'
 
-spelled 'the length guard demands exactly forty characters' '-ne 40'
-spelled 'the trailer grep demands exactly forty hex characters' '[0-9a-f]{40}'
-spelled 'the sha comparison is an equality' '[ "$sha" = "$head_sha" ]'
+check 'a trailer sha that is not hexadecimal reads as missing' 1 "$untouched" \
+    "$(set_of "$(review architecture clean zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz)" "$(review security clean)" "$(review testing clean)" "$(review performance clean)")" \
+    'missing: no architecture review'
+
+check 'two unresolved threads are noted and do not block, because the ruleset blocks on them' 0 "$untouched" \
+    "$four_dimensions" '2 unresolved thread(s)' '[{"isResolved":false},{"isResolved":false}]'
+
+check 'a resolved thread is not counted' 0 "$untouched" "$four_dimensions" \
+    'none blocked' '[{"isResolved":true},{"isResolved":true}]' 'unresolved thread'
+
+check 'no threads at all is not an unresolved thread' 0 "$untouched" "$four_dimensions" \
+    'none blocked' '[]' 'unresolved thread'
+
+check 'a thread node that is not an object refuses to report a count it did not measure' 2 "$untouched" \
+    "$four_dimensions" 'measured nothing' '["x"]'
+
+check 'a renamed isResolved field is refused rather than silently counted as zero' 2 "$untouched" \
+    "$four_dimensions" 'measured nothing' '[{"resolved":false}]'
+
+check 'an isResolved that is not a boolean is refused rather than silently counted as zero' 2 "$untouched" \
+    "$four_dimensions" 'measured nothing' '[{"isResolved":"maybe"}]'
 
 printf '\n%s passed, %s failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]
