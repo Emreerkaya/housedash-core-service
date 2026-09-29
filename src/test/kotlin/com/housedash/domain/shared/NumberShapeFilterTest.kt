@@ -357,18 +357,38 @@ class NumberShapeFilterTest {
     }
 
     @Test
-    fun `a thousands separated list of prices is money whatever its groups alternate to`() {
+    fun `a thousands separated list of prices is money under a cue as well as without one`() {
+        val lists =
+            listOf(
+                "rated 10,000, 12,000 or 14,000 BTU",
+                "quotes were 1,500, 2,300, 3,100",
+                "12,000, 18,000",
+                "1,000, 2,500, 10,000",
+                "1,500; 2,300; 3,100",
+                "1,200, 1,800, 2,400",
+                "12,000, 18,000, 24,000",
+                "120,000, 180,000",
+                "sizes 100, 150, 200 mm",
+                "boiler serviced 2019, 2021, 2023 and now it leaks",
+            )
+        lists.forEach(::assertNothingFound)
+        lists.map { "$it, call me anytime" }.forEach(::assertNothingFound)
+        assertPhoneNumber("call me on 917, 555, 0199 about the leak")
+        assertPhoneNumber("call me on 917,555,0199 about the leak")
+    }
+
+    @Test
+    fun `the cue arm still reads a list whose numbers are separated by a space alone, and that is the price`() {
         listOf(
-            "rated 10,000, 12,000 or 14,000 BTU",
-            "quotes were 1,500, 2,300, 3,100",
-            "12,000, 18,000",
-            "1,000, 2,500, 10,000",
-            "1,500; 2,300; 3,100",
-            "1,200, 1,800, 2,400",
-            "12,000, 18,000, 24,000",
-            "120,000, 180,000",
-            "sizes 100, 150, 200 mm",
-        ).forEach(::assertNothingFound)
+            "boiler serviced 2019 2021 2023, call me",
+            "1400 1600 1800 mm, call me",
+            "the invoices are 4455 4456 4457, call me about the three visits",
+            "10,000 12,000 14,000 BTU, call me",
+            "2026-09-24, 350 Example Street, call me",
+            "\u00A312,000, \u00A318,000, call me",
+        ).forEach(::assertPhoneNumber)
+        assertNothingFound("boiler serviced 2019 2021 2023")
+        assertNothingFound("1400 1600 1800 mm")
     }
 
     @Test

@@ -32,6 +32,9 @@ private val DIGIT_GROUP = Regex("""\p{Nd}++""")
 
 private val THOUSANDS_GROUPED_SEPARATOR = Regex(THOUSANDS_PUNCTUATION)
 
+private val ENDS_ONE_NUMBER_IN_A_LIST =
+    Regex("""[${TablesTheGuardReads.PUNCTUATION_THE_THOUSANDS_ARM_OWNS}]\p{Zs}{1,2}+""")
+
 private val NAMES_THE_NUMBER_AS_SOMETHING_ELSE =
     Regex("""(?i)\b$NAMES_A_NUMBER_AS_SOMETHING_ELSE\b""")
 
@@ -74,6 +77,8 @@ private const val NO_MARK = 0
 
 private const val ONE_CHUNK = 1
 
+private val DIGITS_A_DIALABLE_NUMBER_REACHES = PHONE_DIGIT_COUNT.first
+
 private const val PHONE_CUE_WINDOW = 24
 
 internal fun holdsPhoneNumberInAlreadyFoldedText(folded: String): Boolean =
@@ -84,6 +89,15 @@ private data class WordsAroundTheRun(
     val cued: Boolean,
     val namedOtherwise: Boolean,
 )
+
+private class HowTheRunIsPunctuated(
+    groups: List<Int>,
+    separators: List<String>,
+) {
+    val groupedByTheThousandsMarks = isGroupedByTheThousandsMarks(separators)
+
+    val readsAsAListOfNumbers = groupedByTheThousandsMarks && readsAsAListOfNumbers(groups, separators)
+}
 
 private fun wordsAround(
     folded: String,
@@ -106,12 +120,12 @@ private fun isAPhoneNumber(
     val words = wordsAround(folded, candidate)
     val prefixed = candidate.value.startsWith(INTERNATIONAL_PREFIX)
     val separators = DIGIT_GROUP.split(candidate.value).drop(1).dropLast(1)
-    val punctuationGrouped = isGroupedByTheThousandsMarks(separators)
+    val punctuation = HowTheRunIsPunctuated(groups, separators)
     val digits = groups.sum()
     if (digits in PHONE_DIGIT_COUNT &&
         (
             isSpreadOneDigitToASeparator(groups, separators) ||
-                hasPhoneShape(groups, digits, prefixed, words, punctuationGrouped)
+                hasPhoneShape(groups, digits, prefixed, words, punctuation)
         )
     ) {
         return true
@@ -124,7 +138,7 @@ private fun isAPhoneNumber(
             digits,
             prefixed && groups.first() != ONE_DIGIT,
             words,
-            punctuationGrouped,
+            punctuation,
         )
 }
 
@@ -136,10 +150,11 @@ private fun hasPhoneShape(
     digitsBeforeTrimming: Int,
     internationallyPrefixed: Boolean,
     words: WordsAroundTheRun,
-    punctuationGrouped: Boolean,
+    punctuation: HowTheRunIsPunctuated,
 ): Boolean =
     when {
-        punctuationGrouped && isGroupedLikeThousands(groups) -> false
+        punctuation.groupedByTheThousandsMarks && isGroupedLikeThousands(groups) -> false
+        punctuation.readsAsAListOfNumbers -> false
         internationallyPrefixed -> true
         groups.size == ONE_GROUP -> words.cued
         !isGroupedWithinAPhoneNumbersLimits(groups) -> false
@@ -163,28 +178,30 @@ private fun isDialableWithoutACue(
 ): Boolean {
     if (groups.size < FEWEST_GROUPS_NO_OTHER_NUMBER_USES) return false
     val digits = groups.sum()
-    val endsLikeAnExchangeAndALine =
-        digits == DIGITS_IN_A_DIALABLE_NUMBER &&
-            groups.last() == DIGITS_IN_THE_LINE_GROUP &&
-            groups[groups.size - GROUPS_FROM_THE_END_TO_THE_LINES_OWN_GROUP] in
-            DIGITS_IN_THE_GROUP_BEFORE_THE_LINE
     val strayDigitsBrokeUpADialableRun =
         !namedOtherwise &&
             digitsBeforeTrimming == DIGITS_IN_A_DIALABLE_NUMBER &&
             digitsBeforeTrimming > digits &&
             groups.any { it == DIGITS_IN_AN_EXCHANGE_GROUP }
-    return endsLikeAnExchangeAndALine || strayDigitsBrokeUpADialableRun
+    return endsLikeAnExchangeAndALine(groups) || strayDigitsBrokeUpADialableRun
 }
+
+private fun endsLikeAnExchangeAndALine(groups: List<Int>): Boolean =
+    groups.size >= GROUPS_FROM_THE_END_TO_THE_LINES_OWN_GROUP &&
+        groups.sum() == DIGITS_IN_A_DIALABLE_NUMBER &&
+        groups.last() == DIGITS_IN_THE_LINE_GROUP &&
+        groups[groups.size - GROUPS_FROM_THE_END_TO_THE_LINES_OWN_GROUP] in DIGITS_IN_THE_GROUP_BEFORE_THE_LINE
 
 private fun marksIn(separator: String): Int = separator.count { it.category != CharCategory.SPACE_SEPARATOR }
 
-private fun digitsInEachChunkTheSpacesMake(
+private fun digitsInEachChunk(
     groups: List<Int>,
     separators: List<String>,
+    endsAChunk: (String) -> Boolean,
 ): List<Int> {
     val chunks = mutableListOf(groups.first())
     groups.drop(1).zip(separators).forEach { (group, separator) ->
-        if (marksIn(separator) == NO_MARK) chunks.add(group) else chunks[chunks.lastIndex] += group
+        if (endsAChunk(separator)) chunks.add(group) else chunks[chunks.lastIndex] += group
     }
     return chunks
 }
@@ -193,10 +210,20 @@ private fun theSpacesGroupTheRunAsANumberIsGrouped(
     groups: List<Int>,
     separators: List<String>,
 ): Boolean {
-    val chunks = digitsInEachChunkTheSpacesMake(groups, separators)
+    val chunks = digitsInEachChunk(groups, separators) { marksIn(it) == NO_MARK }
     return chunks.size == ONE_CHUNK ||
         chunks.all { it == ONE_DIGIT } ||
         isGroupedWithinAPhoneNumbersLimits(chunks)
+}
+
+private fun readsAsAListOfNumbers(
+    groups: List<Int>,
+    separators: List<String>,
+): Boolean {
+    val numbers = digitsInEachChunk(groups, separators) { ENDS_ONE_NUMBER_IN_A_LIST.matches(it) }
+    return numbers.size > ONE_CHUNK &&
+        numbers.none { it >= DIGITS_A_DIALABLE_NUMBER_REACHES } &&
+        !endsLikeAnExchangeAndALine(numbers)
 }
 
 private fun isSpreadOneDigitToASeparator(

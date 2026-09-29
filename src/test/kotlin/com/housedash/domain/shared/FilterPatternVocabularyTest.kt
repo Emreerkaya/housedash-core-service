@@ -20,9 +20,9 @@ private const val NAME_GROUP = 2
 
 private const val REST_OF_THE_OPENING_LINE_GROUP = 3
 
-private const val DECLARATIONS_THE_FILTER_HOLDS = 132
+private const val DECLARATIONS_THE_FILTER_HOLDS = 136
 
-private const val PATTERNS_THE_FILTER_DECLARES = 53
+private const val PATTERNS_THE_FILTER_DECLARES = 54
 
 private val OPENS_A_PATTERN = Regex("""^(?:Regex\(|")""")
 
