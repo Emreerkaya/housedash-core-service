@@ -37,28 +37,28 @@ jobs:
           cat "$log"
           case "$status" in
             0)
-              conclusion=success
+              outcome=success
               title='every required dimension is clean at this head'
               ;;
             3)
-              conclusion=neutral
+              outcome=pending
               title=$(grep -m1 '^pending: ' "$log" | cut -c1-255)
               title=${title:-'waiting for reviews that have not posted at this head'}
               ;;
             *)
-              conclusion=failure
+              outcome=failure
               title='agent-review refused this head'
               ;;
           esac
           {
             printf 'status=%s\n' "$status"
-            printf 'conclusion=%s\n' "$conclusion"
+            printf 'outcome=%s\n' "$outcome"
             printf 'title=%s\n' "$title"
           } >> "$GITHUB_OUTPUT"
 
       - if: always() && steps.gate.conclusion != 'skipped'
         env:
-          CONCLUSION: ${{ steps.gate.outputs.conclusion }}
+          OUTCOME: ${{ steps.gate.outputs.outcome }}
           TITLE: ${{ steps.gate.outputs.title }}
         run: |
           log="${RUNNER_TEMP}/agent-review.log"
@@ -66,13 +66,15 @@ jobs:
           payload=$(jq -n \
             --arg name "$CHECK_NAME" \
             --arg head_sha "$HEAD_SHA" \
-            --arg conclusion "${CONCLUSION:-failure}" \
+            --arg outcome "${OUTCOME:-failure}" \
             --arg title "${TITLE:-agent-review did not report}" \
             --arg details_url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
             --rawfile log "$log" \
-            '{name: $name, head_sha: $head_sha, status: "completed", conclusion: $conclusion,
-              details_url: $details_url,
-              output: {title: $title, summary: ("```\n" + $log + "\n```")}}')
+            '{name: $name, head_sha: $head_sha, details_url: $details_url,
+              output: {title: $title, summary: ("```\n" + $log + "\n```")}}
+             + (if $outcome == "pending"
+                then {status: "in_progress"}
+                else {status: "completed", conclusion: $outcome} end)')
           existing=$(gh api \
             "repos/${GITHUB_REPOSITORY}/commits/${HEAD_SHA}/check-runs?check_name=${CHECK_NAME}&per_page=100" \
             --jq '[.check_runs[].id] | max // empty')
@@ -83,7 +85,7 @@ jobs:
             printf '%s' "$payload" | gh api --method POST "repos/${GITHUB_REPOSITORY}/check-runs" --input -
           fi
 
-      - if: steps.gate.outputs.conclusion == 'failure'
+      - if: steps.gate.outputs.outcome == 'failure'
         env:
           GATE_STATUS: ${{ steps.gate.outputs.status }}
         run: exit "$GATE_STATUS"
