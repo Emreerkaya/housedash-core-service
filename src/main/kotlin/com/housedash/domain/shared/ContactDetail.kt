@@ -75,6 +75,12 @@ private val CONFUSABLES_FOLDED_TO_LATIN =
         '\u03A7' to 'X',
         '\u0131' to 'i',
         '\u0251' to 'a',
+        '\u0585' to 'o',
+        '\u0578' to 'n',
+        '\u057D' to 'u',
+        '\u0570' to 'h',
+        '\u056C' to 'l',
+        '\u0566' to 'q',
     )
 
 private val LINE_BREAKS_A_DESCRIPTION_BOX_CREATES =
@@ -232,6 +238,8 @@ private val EMAIL_TOP_LEVEL_LABEL = Regex("""[A-Za-z]{2,24}""")
 private val PAYMENT_SERVICE =
     Regex(
         """(?i)\b(?:cash$BETWEEN_THE_WORDS_OF_A_BRAND{0,2}+(?:app|me)|venmo|""" +
+            """revolut|wero|payid|strike${DOT_IN_A_BRAND}me|chime${DOT_IN_A_BRAND}com|""" +
+            """interac$BETWEEN_THE_WORDS_OF_A_BRAND{0,2}+e$BETWEEN_THE_WORDS_OF_A_BRAND{0,2}+transfer|""" +
             """pay$BETWEEN_THE_WORDS_OF_A_BRAND{0,2}+pal|zelle|wise${DOT_IN_A_BRAND}com|""" +
             """revolut${DOT_IN_A_BRAND}me|square${DOT_IN_A_BRAND}link|monzo${DOT_IN_A_BRAND}me|""" +
             """apple$BETWEEN_THE_WORDS_OF_A_BRAND{0,2}+pay|google$BETWEEN_THE_WORDS_OF_A_BRAND{0,2}+pay|""" +
