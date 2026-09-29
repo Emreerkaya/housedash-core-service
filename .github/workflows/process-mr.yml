@@ -14,6 +14,7 @@ permissions:
 
 jobs:
   commitlint:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -23,6 +24,7 @@ jobs:
       - run: just commits origin/${{ github.event.pull_request.base.ref }}
 
   ktlint:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -36,6 +38,7 @@ jobs:
           if-no-files-found: ignore
 
   detekt:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -49,6 +52,7 @@ jobs:
           if-no-files-found: ignore
 
   test:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -64,6 +68,7 @@ jobs:
           if-no-files-found: ignore
 
   jacoco:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -77,6 +82,7 @@ jobs:
           if-no-files-found: ignore
 
   gitleaks:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
