@@ -1,0 +1,7 @@
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/housedash}
+    username: ${DB_USERNAME:housedash}
+    password: ${DB_PASSWORD:local}
+  flyway:
+    locations: classpath:db/migration

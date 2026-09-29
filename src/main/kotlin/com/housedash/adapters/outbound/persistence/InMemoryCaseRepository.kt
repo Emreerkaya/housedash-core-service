@@ -8,11 +8,9 @@ import com.housedash.domain.case.CaseId
 import com.housedash.domain.case.CaseRow
 import com.housedash.domain.case.CaseState
 import com.housedash.domain.case.DescribedCase
-import org.springframework.stereotype.Repository
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 
-@Repository
 class InMemoryCaseRepository : CaseRepository {
     private val rowsById = ConcurrentHashMap<String, CaseRow>()
 
