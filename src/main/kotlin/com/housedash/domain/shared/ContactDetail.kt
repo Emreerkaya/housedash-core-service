@@ -77,6 +77,9 @@ private val CONFUSABLES_FOLDED_TO_LATIN =
         '\u0251' to 'a',
     )
 
+private val LINE_BREAKS_A_DESCRIPTION_BOX_CREATES =
+    setOf('\n', '\r', '\t', '\u000B', '\u000C', '\u0085', '\u2028', '\u2029')
+
 private val CATEGORIES_STRIPPED_BEFORE_MATCHING =
     setOf(
         CharCategory.FORMAT,
@@ -86,6 +89,19 @@ private val CATEGORIES_STRIPPED_BEFORE_MATCHING =
     )
 
 private const val SLASH_LIKE = """/\u2044\u2215\u29F8"""
+
+private const val DOT_A_BRAND_MAY_BE_WRITTEN_WITH = """.\u00B7\u2022\u2027\u30FB"""
+
+private const val DOT_IN_A_BRAND = """[$DOT_A_BRAND_MAY_BE_WRITTEN_WITH]"""
+
+private const val BETWEEN_THE_WORDS_OF_A_BRAND =
+    """[$DOT_A_BRAND_MAY_BE_WRITTEN_WITH\-_$SLASH_LIKE\p{Zs}]"""
+
+private const val APOSTROPHE_OR_NONE = """['\u2019\u02BC\u055A]?+"""
+
+private const val WHATSAPP =
+    """what$BETWEEN_THE_WORDS_OF_A_BRAND{0,2}+$APOSTROPHE_OR_NONE""" +
+        """s$BETWEEN_THE_WORDS_OF_A_BRAND{0,2}+app"""
 
 private const val PUNCTUATION_A_SPACED_OUT_RUN_KEEPS = """[.@/\-_]"""
 
@@ -135,7 +151,7 @@ private val SEPARATOR_A_SPREAD_OUT_NUMBER_USES = Regex("""[\p{Zs}\p{Pd}\u2212]""
 private val PHONE_CUE =
     Regex(
         """(?i)\b(?:call|calls|called|calling|text|texts|texted|ring|rings|dial|dials|""" +
-            """phone|phones|telephone|tel|mobile|cell|cellphone|whatsapp|sms)\b""",
+            """phone|phones|telephone|tel|mobile|cell|cellphone|$WHATSAPP|sms)\b""",
     )
 
 private const val NAMES_A_NUMBER_AS_SOMETHING_ELSE =
@@ -192,10 +208,14 @@ private val EMAIL_TOP_LEVEL_LABEL = Regex("""[A-Za-z]{2,24}""")
 
 private val PAYMENT_SERVICE =
     Regex(
-        """(?i)\b(?:cash[.\-$SLASH_LIKE\p{Zs}]?+(?:app|me)|venmo|paypal|pay[.\-$SLASH_LIKE]?+pal|""" +
-            """zelle|wise\.com|revolut\.me|square\.link|monzo\.me|apple\p{Zs}?+pay|google\p{Zs}?+pay|""" +
-            """(?:buy\.|checkout\.)?+stripe\.com|ko-?+fi\.com|gofundme\.com|patreon\.com|""" +
-            """western\p{Zs}?+union|moneygram|payoneer|skrill|bitcoin|ethereum|monero)\b""",
+        """(?i)\b(?:cash$BETWEEN_THE_WORDS_OF_A_BRAND{0,2}+(?:app|me)|venmo|""" +
+            """pay$BETWEEN_THE_WORDS_OF_A_BRAND{0,2}+pal|zelle|wise${DOT_IN_A_BRAND}com|""" +
+            """revolut${DOT_IN_A_BRAND}me|square${DOT_IN_A_BRAND}link|monzo${DOT_IN_A_BRAND}me|""" +
+            """apple$BETWEEN_THE_WORDS_OF_A_BRAND{0,2}+pay|google$BETWEEN_THE_WORDS_OF_A_BRAND{0,2}+pay|""" +
+            """(?:buy$DOT_IN_A_BRAND|checkout$DOT_IN_A_BRAND)?+stripe${DOT_IN_A_BRAND}com|""" +
+            """ko-?+fi${DOT_IN_A_BRAND}com|gofundme${DOT_IN_A_BRAND}com|patreon${DOT_IN_A_BRAND}com|""" +
+            """western$BETWEEN_THE_WORDS_OF_A_BRAND{0,2}+union|moneygram|payoneer|skrill|""" +
+            """bitcoin|ethereum|monero)\b""",
     )
 
 private val CASH_TAG = Regex("""(?<![A-Za-z0-9])\$[A-Za-z][A-Za-z0-9_]{1,30}+""")
@@ -220,10 +240,14 @@ private val IBAN_CANDIDATE =
 
 private val MESSAGING_HANDLE =
     Regex(
-        """(?i)(?:\b(?:whatsapp|viber|wechat|kakaotalk)\b|""" +
-            """\b(?:t\.me|telegram\.me|wa\.me|m\.me|api\.whatsapp\.com|instagram\.com|ig\.me|""" +
-            """facebook\.com|fb\.me|snapchat\.com|tiktok\.com|x\.com|twitter\.com|nextdoor\.com|""" +
-            """signal\.me|discord\.gg|linkedin\.com/in)[$SLASH_LIKE][A-Za-z0-9._~%+\-]{2,40}+)""",
+        """(?i)(?:\b(?:$WHATSAPP|viber|wechat|kakaotalk)\b|""" +
+            """\b(?:t${DOT_IN_A_BRAND}me|telegram${DOT_IN_A_BRAND}me|wa${DOT_IN_A_BRAND}me|""" +
+            """m${DOT_IN_A_BRAND}me|api${DOT_IN_A_BRAND}whatsapp${DOT_IN_A_BRAND}com|""" +
+            """instagram${DOT_IN_A_BRAND}com|ig${DOT_IN_A_BRAND}me|facebook${DOT_IN_A_BRAND}com|""" +
+            """fb${DOT_IN_A_BRAND}me|snapchat${DOT_IN_A_BRAND}com|tiktok${DOT_IN_A_BRAND}com|""" +
+            """x${DOT_IN_A_BRAND}com|twitter${DOT_IN_A_BRAND}com|nextdoor${DOT_IN_A_BRAND}com|""" +
+            """signal${DOT_IN_A_BRAND}me|discord${DOT_IN_A_BRAND}gg|linkedin${DOT_IN_A_BRAND}com/in)""" +
+            """\p{Zs}{0,2}+[$SLASH_LIKE]\p{Zs}{0,2}+[A-Za-z0-9._~%+\-]{2,40}+)""",
     )
 
 private val PAYMENT_PATTERNS = listOf(PAYMENT_SERVICE, CASH_TAG, SORT_CODE, BANK_ACCOUNT, CRYPTO_ADDRESS)
@@ -293,7 +317,11 @@ private fun foldsForMatchingOnly(text: String): List<String> {
         buildString(compatibility.length) {
             for (character in compatibility) {
                 if (character.category in CATEGORIES_STRIPPED_BEFORE_MATCHING) continue
-                append(CONFUSABLES_FOLDED_TO_LATIN[character] ?: character)
+                if (character in LINE_BREAKS_A_DESCRIPTION_BOX_CREATES) {
+                    append(' ')
+                } else {
+                    append(CONFUSABLES_FOLDED_TO_LATIN[character] ?: character)
+                }
             }
         }
     val spacingClosed =
@@ -315,17 +343,28 @@ private fun isAPhoneNumber(
     punctuationGrouped: Boolean,
 ): Boolean {
     val groups = DIGIT_GROUP.findAll(candidate.value).map { characterCount(it.value) }.toList()
-    if (groups.sum() !in PHONE_DIGIT_COUNT) return false
-    if (punctuationGrouped && isGroupedLikeThousands(groups)) return false
     val from = (candidate.range.first - PHONE_CUE_WINDOW).coerceAtLeast(0)
     val to = (candidate.range.last + 1 + PHONE_CUE_WINDOW).coerceAtMost(folded.length)
-    val window = folded.substring(from, to)
-    return hasPhoneShape(
-        groups,
-        DIGIT_GROUP.split(candidate.value).drop(1).dropLast(1),
-        candidate.value.startsWith(INTERNATIONAL_PREFIX),
-        PHONE_CUE.containsMatchIn(window) || UNQUALIFIED_NUMBER_CUE.containsMatchIn(window),
-    )
+    val around = folded.substring(from, to)
+    val cued = PHONE_CUE.containsMatchIn(around) || UNQUALIFIED_NUMBER_CUE.containsMatchIn(around)
+    if (punctuationGrouped && !cued) return false
+    val prefixed = candidate.value.startsWith(INTERNATIONAL_PREFIX)
+    val separators = DIGIT_GROUP.split(candidate.value).drop(1).dropLast(1)
+    if (groups.sum() in PHONE_DIGIT_COUNT &&
+        hasPhoneShape(groups, separators, prefixed, cued, punctuationGrouped)
+    ) {
+        return true
+    }
+    val unpadded = groups.dropWhile { it == ONE_DIGIT }.dropLastWhile { it == ONE_DIGIT }
+    return unpadded.size != groups.size &&
+        unpadded.sum() in PHONE_DIGIT_COUNT &&
+        hasPhoneShape(
+            unpadded,
+            emptyList(),
+            prefixed && groups.first() != ONE_DIGIT,
+            cued,
+            punctuationGrouped,
+        )
 }
 
 private fun hasPhoneShape(
@@ -333,8 +372,10 @@ private fun hasPhoneShape(
     separators: List<String>,
     internationallyPrefixed: Boolean,
     cued: Boolean,
+    punctuationGrouped: Boolean,
 ): Boolean =
     when {
+        punctuationGrouped && isGroupedLikeThousands(groups) -> false
         internationallyPrefixed -> true
         isSpreadOneDigitToASeparator(groups, separators) -> true
         groups.size == ONE_GROUP -> cued
