@@ -15,7 +15,7 @@ private const val ROWS_THE_CORPUS_HOLDS = 167
 
 private const val LABELLED_ROWS_THE_CORPUS_HOLDS = 157
 
-private const val DISAGREEMENTS_PINNED_AT_THIS_COMMIT = 62
+private const val DISAGREEMENTS_PINNED_AT_THIS_COMMIT = 54
 
 private const val ROWS_TOO_SHORT_TO_BE_A_DESCRIPTION = 62
 

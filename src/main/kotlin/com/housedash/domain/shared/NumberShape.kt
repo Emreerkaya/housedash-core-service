@@ -1,6 +1,6 @@
 package com.housedash.domain.shared
 
-private val PHONE_SEPARATOR = TablesTheGuardReads.phoneSeparator
+private const val PHONE_SEPARATOR = TablesTheGuardReads.SEPARATOR_BETWEEN_TWO_DIGIT_GROUPS
 
 private val PHONE_CUE =
     Regex("""(?i)\b(?:${TablesTheGuardReads.waysOfAskingToBeRung.joinToString("|")})\b""")
@@ -32,7 +32,7 @@ private val PUNCTUATION_GROUPED_CANDIDATE =
 
 private val DIGIT_GROUP = Regex("""\p{Nd}++""")
 
-private val SEPARATOR_A_SPREAD_OUT_NUMBER_USES = Regex("""[\p{Zs}\p{Pd}\u2212]""")
+private val THOUSANDS_GROUPED_SEPARATOR = Regex(THOUSANDS_PUNCTUATION)
 
 private val UNQUALIFIED_NUMBER_CUE =
     Regex("""(?i)(?<!\b$NAMES_A_NUMBER_AS_SOMETHING_ELSE\p{Zs}{0,4})\bnumbers?\b""")
@@ -69,18 +69,19 @@ private const val MOST_DIGITS_BEFORE_A_THOUSANDS_SEPARATOR = 3
 
 private const val DIGITS_IN_A_THOUSANDS_GROUP = 3
 
+private const val ONE_MARK = 1
+
+private const val ONE_SPELLING_THROUGHOUT = 1
+
 private const val PHONE_CUE_WINDOW = 24
 
 internal fun holdsPhoneNumberInAlreadyFoldedText(folded: String): Boolean =
-    PHONE_CANDIDATE.findAll(folded).any { isAPhoneNumber(folded, it, punctuationGrouped = false) } ||
-        PUNCTUATION_GROUPED_CANDIDATE.findAll(folded).any {
-            isAPhoneNumber(folded, it, punctuationGrouped = true)
-        }
+    PHONE_CANDIDATE.findAll(folded).any { isAPhoneNumber(folded, it) } ||
+        PUNCTUATION_GROUPED_CANDIDATE.findAll(folded).any { isAPhoneNumber(folded, it) }
 
 private fun isAPhoneNumber(
     folded: String,
     candidate: MatchResult,
-    punctuationGrouped: Boolean,
 ): Boolean {
     val groups = DIGIT_GROUP.findAll(candidate.value).map { characterCount(it.value) }.toList()
     val from = (candidate.range.first - PHONE_CUE_WINDOW).coerceAtLeast(0)
@@ -89,6 +90,7 @@ private fun isAPhoneNumber(
     val cued = PHONE_CUE.containsMatchIn(around) || UNQUALIFIED_NUMBER_CUE.containsMatchIn(around)
     val prefixed = candidate.value.startsWith(INTERNATIONAL_PREFIX)
     val separators = DIGIT_GROUP.split(candidate.value).drop(1).dropLast(1)
+    val punctuationGrouped = isGroupedByTheThousandsMarks(separators)
     val digits = groups.sum()
     if (digits in PHONE_DIGIT_COUNT &&
         (
@@ -109,6 +111,9 @@ private fun isAPhoneNumber(
             punctuationGrouped,
         )
 }
+
+private fun isGroupedByTheThousandsMarks(separators: List<String>): Boolean =
+    separators.isNotEmpty() && separators.all { THOUSANDS_GROUPED_SEPARATOR.matches(it) }
 
 private fun hasPhoneShape(
     groups: List<Int>,
@@ -159,4 +164,5 @@ private fun isSpreadOneDigitToASeparator(
 ): Boolean =
     groups.size >= FEWEST_SINGLE_DIGIT_GROUPS &&
         groups.all { it == ONE_DIGIT } &&
-        separators.all { SEPARATOR_A_SPREAD_OUT_NUMBER_USES.matches(it) }
+        separators.distinct().size == ONE_SPELLING_THROUGHOUT &&
+        separators.all { characterCount(it) == ONE_MARK }

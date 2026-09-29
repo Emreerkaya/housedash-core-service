@@ -269,13 +269,16 @@ class TableRowCoverageTest {
     }
 
     @Test
-    fun `the three marks the thousands arm owns are not separators, and a letter is not one either`() {
+    fun `a run grouped entirely by the thousands marks is money by its shape, and a letter is not a separator`() {
         TablesTheGuardReads.PUNCTUATION_THE_THOUSANDS_ARM_OWNS.forEach { owned ->
             assertFindsNothing(
                 "rated 10${owned}000$owned 12${owned}000 or 14${owned}000 BTU",
                 owned.toString(),
-                "the three marks the thousands arm owns, which the separator rule excludes on purpose so that a " +
-                    "thousands-grouped quantity list is read by the arm that knows that shape",
+                "the three marks the thousands arm reads are separators like any other mark, and what keeps a " +
+                    "thousands-grouped quantity list out is its shape: a first group of three digits or fewer " +
+                    "followed by groups of exactly three. That veto is read from the candidate's own " +
+                    "separators rather than from which candidate expression matched it, so it applies however " +
+                    "the run was found",
             )
         }
         LETTERS_A_NUMBER_IS_NOT_GROUPED_BY.forEach { letter ->
