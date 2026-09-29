@@ -12,15 +12,15 @@ REJECT	REJECT	bob@gmail.com	the plain email
 REJECT	REJECT	bob at gmail dot com	worded @ and worded dot
 REJECT	REJECT	bob{at}gmail.com	braced at
 REJECT	REJECT	bob@gmail․com	U+2024, folds to . under NFKD
-REJECT	ACCEPT	bob@gmail dot com	the email cross-product; plain ASCII, costs nothing to write
-REJECT	ACCEPT	bob@gmail·com	U+00B7, already declared a dot for payment brands in this file
-REJECT	ACCEPT	bob@gmail•com	U+2022, same
-REJECT	ACCEPT	bob@gmail‧com	U+2027, same
-REJECT	ACCEPT	bob@gmail・com	U+30FB, same
-REJECT	ACCEPT	bob@gmail｡com	U+FF61
-REJECT	ACCEPT	bob@gmail,com	comma as the label separator
-REJECT	ACCEPT	bob<at>gmail.com	{at} is caught, <at> is not
-REJECT	ACCEPT	bob[at]gmail·com	both axes at once
+REJECT	REJECT	bob@gmail dot com	the email cross-product; plain ASCII, costs nothing to write
+REJECT	REJECT	bob@gmail·com	U+00B7, already declared a dot for payment brands in this file
+REJECT	REJECT	bob@gmail•com	U+2022, same
+REJECT	REJECT	bob@gmail‧com	U+2027, same
+REJECT	REJECT	bob@gmail・com	U+30FB, same
+REJECT	REJECT	bob@gmail｡com	U+FF61
+REJECT	REJECT	bob@gmail,com	comma as the label separator
+REJECT	REJECT	bob<at>gmail.com	{at} is caught, <at> is not
+REJECT	REJECT	bob[at]gmail·com	both axes at once
 REJECT	REJECT	Leaking tap under the sink, reach me 91-7555-0199 anytime	closed by widening the group before the line; dialable 9175550199 written 2-4-4
 REJECT	REJECT	Boiler wont fire, hit me up 21 2555 1234 before noon please	closed by widening the group before the line; dialable 2125551234 written 2-4-4
 REJECT	ACCEPT	2125-551234	inherited

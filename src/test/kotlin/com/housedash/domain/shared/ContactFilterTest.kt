@@ -91,6 +91,36 @@ class ContactFilterTest {
     }
 
     @Test
+    fun `finds an email whose domain separator is a dot only in shape`() {
+        listOf(
+            "bob@gmail dot com",
+            "bob@gmail\u00B7com",
+            "bob@gmail\u2022com",
+            "bob@gmail\u2027com",
+            "bob@gmail\u30FBcom",
+            "bob@gmail\uFF61com",
+            "bob@gmail,com",
+            "bob<at>gmail.com",
+            "bob[at]gmail\u00B7com",
+            "bob<dot>smith@gmail\u2022com",
+        ).forEach { text ->
+            assertEquals(setOf(ContactDetail.EmailAddress), contactDetailsIn(text), text)
+        }
+    }
+
+    @Test
+    fun `an at sign used to mean at does not turn the prose after it into a domain`() {
+        listOf(
+            "3 @ 5.00 each for the washers",
+            "mail the receipt to 10001-1234 instead",
+            "quotes @ 250, co-op board wants two more before it signs",
+            "the leak started @ 8, however it had stopped by the morning",
+            "washers @ 12, me and the super both looked at the joint",
+            "arrived @ 9, dev work on the riser starts after that",
+        ).forEach(::assertNothingFound)
+    }
+
+    @Test
     fun `finds a payment link or handle`() {
         listOf(
             "cash.app/\$bob",
