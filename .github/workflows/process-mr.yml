@@ -18,7 +18,9 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/setup-jvm
-      - run: just commits origin/${{ github.event.pull_request.base.ref }}
+      - env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+        run: just commits "origin/${BASE_REF}"
 
   ktlint:
     runs-on: ubuntu-latest

@@ -65,9 +65,12 @@ all_five=$(set_of \
 
 pass=0
 fail=0
+names=''
+cases_this_suite_runs=56
 
 check() {
     local name=$1 want=$2 changed=$3 reviews=$4 wanted_text=${5:-} threads=${6:-[]} unwanted_text=${7:-}
+    names="${names}${name}"$'\n'
     local out got
     out=$(PATH="${stub_dir}:${PATH}" \
         STUB_CHANGED="$changed" STUB_REVIEWS="$reviews" STUB_THREADS="$threads" \
@@ -284,6 +287,7 @@ fi
 
 probe_repo() {
     local name=$1 want_text=$2
+    names="${names}${name}"$'\n'
     shift 2
     local root
     root=$(mktemp -d)
@@ -323,6 +327,10 @@ check 'a trailer sha that is not hexadecimal reads as missing' 1 "$untouched" \
     "$(set_of "$(review architecture clean zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz)" "$(review security clean)" "$(review testing clean)" "$(review performance clean)")" \
     'missing: no architecture review'
 
+check 'a dimension name with the required one as its tail does not satisfy the requirement' 1 "$untouched" \
+    "$(set_of "$(review architecture clean)" "$(review xsecurity clean)" "$(review testing clean)" "$(review performance clean)")" \
+    'missing: no security review'
+
 check 'two unresolved threads are noted and do not block, because the ruleset blocks on them' 0 "$untouched" \
     "$four_dimensions" '2 unresolved thread(s)' '[{"isResolved":false},{"isResolved":false}]'
 
@@ -342,4 +350,20 @@ check 'an isResolved that is not a boolean is refused rather than silently count
     "$four_dimensions" 'measured nothing' '[{"isResolved":"maybe"}]'
 
 printf '\n%s passed, %s failed\n' "$pass" "$fail"
+
+ran=$((pass + fail))
+if [ "$ran" -ne "$cases_this_suite_runs" ]; then
+    printf 'census: %s cases ran and this file is written to run %s. Deleting a whole case block left no trace\n' \
+        "$ran" "$cases_this_suite_runs" >&2
+    printf 'before this line existed: the printed count, the exit status and the Gradle suite were all unchanged,\n' >&2
+    printf 'on the suite every merge rests on. Move this number in the commit that adds or removes a case.\n' >&2
+    fail=$((fail + 1))
+fi
+duplicate_names=$(printf '%s' "$names" | sort | uniq -d)
+if [ -n "$duplicate_names" ]; then
+    printf 'census: two cases share a name, so the count cannot tell them apart and one can be lost behind the\n' >&2
+    printf 'other:\n%s\n' "$duplicate_names" >&2
+    fail=$((fail + 1))
+fi
+
 [ "$fail" -eq 0 ]
