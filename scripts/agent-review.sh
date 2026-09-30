@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+export LC_ALL=C
 
 owner_repo="${GITHUB_REPOSITORY:-Emreerkaya/housedash-core-service}"
 owner="${owner_repo%%/*}"
@@ -12,44 +13,107 @@ if [ "${#head_sha}" -ne 40 ] || ! printf '%s' "$head_sha" | grep -qxE '[0-9a-f]{
     exit 2
 fi
 
-changed=$(gh pr diff "$pr" --repo "$owner_repo" --name-only)
-if [ -z "$changed" ]; then
-    printf 'pull request %s reports no changed files; refusing to pass vacuously\n' "$pr" >&2
+if ! files=$(gh api --paginate --slurp "repos/${owner_repo}/pulls/${pr}/files?per_page=100" | jq -c '[.[][]]') \
+    || ! expected=$(gh api "repos/${owner_repo}/pulls/${pr}" | jq '.changed_files'); then
+    printf 'could not list the files pull request %s changed, so nothing was measured\n' "$pr" >&2
     exit 2
 fi
 
-# goal.md, "Function first": an ordinary diff (a feature, a screen, a
-# fixture, a migration, a wiring change) requires no review dimension at
-# all. Money, quote, booking, review or a mint route requires invariants.
-# Anything that decides whether code lands -- a merge gate, a ruleset, a
-# permission, or CI -- requires security. Each trigger below is proven live
-# against this checkout before it is asked whether the diff touches it: a
-# pattern matching no file here has gone blind, and would silently stop
-# requiring its dimension rather than report that it no longer can.
-invariant_bearing=('^"?src/[^/]+/kotlin/com/housedash/domain/(money|quote|booking|review)/|(^|/)[Mm]int[A-Za-z]*\.kt$')
-gate_bearing=('^"?(scripts/agent-review\.sh|\.github/|CODEOWNERS)')
+if ! printf '%s' "$files" | jq -e 'all(.[]; (.filename | type) == "string")' >/dev/null 2>&1 \
+    || ! printf '%s' "$expected" | grep -qxE '[0-9]+'; then
+    printf 'the pull request file listing came back in a shape this check cannot read, so it measured nothing\n' >&2
+    exit 2
+fi
 
-for pattern in "${invariant_bearing[@]}" "${gate_bearing[@]}"; do
-    if ! git ls-files | grep -Eq "$pattern"; then
-        printf 'no file in this checkout matches %s, so a required-dimension trigger can no longer see the path it guards; update this pattern\n' "$pattern" >&2
+listed=$(printf '%s' "$files" | jq 'length')
+if [ "$listed" -eq 0 ]; then
+    printf 'pull request %s reports no changed files; refusing to pass vacuously\n' "$pr" >&2
+    exit 2
+fi
+if [ "$listed" -ne "$expected" ]; then
+    printf 'pull request %s changed %s files but the listing returned %s, so a guarded path may be missing from it; refusing to pass on a partial diff\n' \
+        "$pr" "$expected" "$listed" >&2
+    exit 2
+fi
+
+control_char='explode | any(. < 32 or (. >= 127 and . <= 159))'
+without_control='explode | map(select(. >= 32 and (. < 127 or . > 159))) | implode'
+paths=$(printf '%s' "$files" | jq -r ".[] | (.filename, (.previous_filename // empty)) | ${without_control}")
+hostile=$(printf '%s' "$files" | jq "[.[] | (.filename, (.previous_filename // empty)) | select(${control_char})] | length")
+
+invariant_bearing=(
+    'domain-money::(^|/)domain/([^/]+/)*money/::src/main/kotlin/com/housedash/domain/money/Money.kt'
+    'domain-quote::(^|/)domain/([^/]+/)*quote/::src/main/kotlin/com/housedash/domain/quote/Quote.kt'
+    'domain-booking::(^|/)domain/([^/]+/)*booking/::src/main/kotlin/com/housedash/domain/booking/Booking.kt'
+    'domain-review::(^|/)domain/([^/]+/)*review/::src/main/kotlin/com/housedash/domain/review/Review.kt'
+    'mint-route::mint::src/main/kotlin/com/housedash/adapters/inbound/http/MintController.kt'
+)
+gate_bearing=(
+    'workflows::(^|/)\.github/::.github/workflows/process-review.yml'
+    'gate-script::(^|/)scripts/agent[-_]?review::scripts/agent-review.sh'
+    'codeowners::(^|/)codeowners$::CODEOWNERS'
+)
+unbuilt_triggers=(domain-quote domain-booking domain-review mint-route)
+
+tracked=$(git ls-files -z | tr '\0' '\n')
+
+for entry in "${invariant_bearing[@]}" "${gate_bearing[@]}"; do
+    name=${entry%%::*}
+    rest=${entry#*::}
+    pattern=${rest%%::*}
+    sample=${rest#*::}
+    if ! grep -Eiq -e "$pattern" <<<"$sample"; then
+        printf 'trigger %s (%s) does not match its own pinned sample %s, so the pattern is broken; update it\n' \
+            "$name" "$pattern" "$sample" >&2
         exit 2
     fi
+    if grep -Eiq -e "$pattern" <<<"$tracked"; then
+        continue
+    fi
+    case " ${unbuilt_triggers[*]} " in
+        *" ${name} "*)
+            printf 'note: trigger %s has no file in this checkout yet and is listed as unbuilt, so only its pinned sample proves it alive\n' "$name" >&2
+            continue
+            ;;
+    esac
+    printf 'no file in this checkout matches trigger %s (%s), so a required-dimension trigger can no longer see the path it guards; update this pattern\n' \
+        "$name" "$pattern" >&2
+    exit 2
 done
+
+need_invariants=0
+need_security=0
+for entry in "${invariant_bearing[@]}"; do
+    name=${entry%%::*}
+    rest=${entry#*::}
+    pattern=${rest%%::*}
+    if grep -Eiq -e "$pattern" <<<"$paths"; then
+        printf 'matched: %s (invariants)\n' "$name"
+        need_invariants=1
+    fi
+done
+for entry in "${gate_bearing[@]}"; do
+    name=${entry%%::*}
+    rest=${entry#*::}
+    pattern=${rest%%::*}
+    if grep -Eiq -e "$pattern" <<<"$paths"; then
+        printf 'matched: %s (security)\n' "$name"
+        need_security=1
+    fi
+done
+if [ "$hostile" -gt 0 ]; then
+    printf 'matched: control-character (security): %s changed path(s) carry a control character, which no honest path needs, so the diff fails closed to security review\n' "$hostile"
+    need_security=1
+fi
 
 required=()
 defined_verdicts=(clean blocked)
-for pattern in "${invariant_bearing[@]}"; do
-    if printf '%s\n' "$changed" | grep -Eq "$pattern"; then
-        required+=(invariants)
-        break
-    fi
-done
-for pattern in "${gate_bearing[@]}"; do
-    if printf '%s\n' "$changed" | grep -Eq "$pattern"; then
-        required+=(security)
-        break
-    fi
-done
+if [ "$need_invariants" -eq 1 ]; then
+    required+=(invariants)
+fi
+if [ "$need_security" -eq 1 ]; then
+    required+=(security)
+fi
 
 if [ "${#required[@]}" -eq 0 ]; then
     printf 'required: this diff requires no review dimensions; it touches none of the money, invariant or gate paths\n'

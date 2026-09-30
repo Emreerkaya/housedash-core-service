@@ -8,6 +8,13 @@ trap 'rm -rf "$stub_dir"' EXIT
 
 cat > "${stub_dir}/gh" <<'STUB'
 #!/usr/bin/env bash
+files_json() {
+    if [ -n "${STUB_FILES-}" ]; then
+        printf '%s' "$STUB_FILES"
+        return
+    fi
+    printf '%s' "${STUB_CHANGED-}" | jq -R -s -c 'split("\n") | map(select(length > 0)) | map({filename: .})'
+}
 if [ "${1:-}" = "pr" ] && [ "${2:-}" = "diff" ]; then
     if [ -n "${STUB_FAIL_DIFF-}" ]; then
         printf 'gh: could not determine the changed files\n' >&2
@@ -15,6 +22,22 @@ if [ "${1:-}" = "pr" ] && [ "${2:-}" = "diff" ]; then
     fi
     printf '%s' "${STUB_CHANGED-}"
     [ -n "${STUB_CHANGED-}" ] && printf '\n'
+    exit 0
+fi
+if [ "${1:-}" = "api" ] && printf '%s' "$*" | grep -qE '/pulls/[0-9]+/files'; then
+    if [ -n "${STUB_FAIL_DIFF-}" ]; then
+        printf 'gh: could not determine the changed files\n' >&2
+        exit 1
+    fi
+    printf '[%s]' "$(files_json)"
+    exit 0
+fi
+if [ "${1:-}" = "api" ] && printf '%s' "$*" | grep -qE '/pulls/[0-9]+$'; then
+    if [ -n "${STUB_FAIL_DIFF-}" ]; then
+        printf 'gh: could not determine the changed files\n' >&2
+        exit 1
+    fi
+    printf '{"changed_files": %s}' "${STUB_COUNT:-$(files_json | jq 'length')}"
     exit 0
 fi
 if [ "${1:-}" = "api" ] && [ "${2:-}" = "graphql" ]; then
@@ -33,7 +56,6 @@ chmod +x "${stub_dir}/gh"
 sha=1111111111111111111111111111111111111111
 other=2222222222222222222222222222222222222222
 
-# Fixtures for the diffs goal.md's "Function first" table distinguishes.
 untouched='README.md'
 touched_migration='src/main/resources/db/migration/V2__quote.sql'
 touched_case='src/main/kotlin/com/housedash/domain/case/Case.kt'
@@ -72,7 +94,8 @@ check() {
     names="${names}${name}"$'\n'
     local out got
     out=$(PATH="${stub_dir}:${PATH}" \
-        STUB_CHANGED="$changed" STUB_REVIEWS="$reviews" STUB_THREADS="$threads" \
+        STUB_CHANGED="$changed" STUB_FILES="${case_files-}" STUB_COUNT="${case_count-}" \
+        STUB_REVIEWS="$reviews" STUB_THREADS="$threads" \
         PR_NUMBER=1 HEAD_SHA="$sha" GITHUB_REPOSITORY=Emreerkaya/housedash-core-service \
         bash "$gate" 2>&1)
     got=$?
@@ -95,9 +118,8 @@ check() {
     pass=$((pass + 1))
 }
 
-cases_this_suite_runs=73
+cases_this_suite_runs=136
 
-# --- No dimension required: a feature, a screen, a fixture, a migration, a wiring change ---
 
 check 'an ordinary diff requires no dimensions and passes with no reviews at all' 0 "$untouched" '[]' \
     'this diff requires no review dimensions'
@@ -115,7 +137,6 @@ check 'a clean review naming a dimension an ordinary diff does not require is no
     "$(set_of "$(review invariants clean)")" \
     'is not counted'
 
-# --- domain/money, quote/, booking/, review/ or a mint route requires invariants ---
 
 check 'a domain/money diff with no invariants review is pending, naming invariants' 3 "$touched_money" '[]' \
     'waiting for invariants'
@@ -141,7 +162,6 @@ check 'a malformed verdict on a money diff fails closed rather than reading as c
     "$(set_of "$(review invariants cleann)")" \
     'is not one of the verdicts'
 
-# --- a merge gate, a ruleset, a permission, or CI that decides whether code lands requires security ---
 
 check 'a diff of the gate script itself requires security, and only security' 3 "$touched_gate_script" '[]' \
     'waiting for security'
@@ -158,7 +178,6 @@ check 'a blocked security verdict blocks a gate diff' 1 "$touched_gate_script" \
     "$(set_of "$(review security blocked)")" \
     'reports verdict blocked'
 
-# --- both triggers on one diff ---
 
 check 'a diff touching both money and the gate script requires invariants and security together' 3 \
     "$money_and_gate" '[]' 'waiting for invariants security'
@@ -175,7 +194,6 @@ check 'a mixed diff blocks on either dimension even while the other is still pen
     "$(set_of "$(review invariants blocked)")" \
     'reports verdict blocked'
 
-# --- entitlement, trailer parsing and verdict handling, exercised against a single required dimension ---
 
 check 'a review at a stale sha does not count, leaving the dimension pending' 3 "$touched_gate_script" \
     "$(set_of "$(review security clean "$other")")" \
@@ -221,8 +239,8 @@ check 'a trailer naming only a sha prefix does not count, leaving the dimension 
     "$(set_of "$(review security clean 1111111)")" \
     'missing: no security review'
 
-check 'a diff of the gate itself still requires security even when the changed path is quoted' 3 \
-    '"scripts/agent-review.sh"' '[]' 'waiting for security'
+check 'a changed path carrying a double quote is read by its real name, not a git-quoted spelling of it' 3 \
+    'scripts/agent-review.sh' '[]' 'waiting for security'
 
 check 'the required set is named exactly when both dimensions are satisfied' 0 \
     "$money_and_gate" "$(set_of "$(review invariants clean)" "$(review security clean)")" \
@@ -332,9 +350,9 @@ else
 fi
 
 probe_repo() {
-    local name=$1 want_text=$2
+    local name=$1 want=$2 want_text=$3
     names="${names}${name}"$'\n'
-    shift 2
+    shift 3
     local root
     root=$(mktemp -d)
     git -C "$root" init --quiet
@@ -350,8 +368,8 @@ probe_repo() {
         bash "$gate" 2>&1)
     got=$?
     rm -rf "$root"
-    if [ "$got" -ne 2 ] || ! printf '%s' "$out" | grep -q "$want_text"; then
-        printf 'FAIL %s: expected exit 2 saying %s, got %s\n%s\n\n' "$name" "$want_text" "$got" "$out" >&2
+    if [ "$got" -ne "$want" ] || ! printf '%s' "$out" | grep -q "$want_text"; then
+        printf 'FAIL %s: expected exit %s saying %s, got %s\n%s\n\n' "$name" "$want" "$want_text" "$got" "$out" >&2
         fail=$((fail + 1))
     else
         printf 'ok %s\n' "$name"
@@ -359,14 +377,40 @@ probe_repo() {
     fi
 }
 
-probe_repo 'a checkout where neither trigger pattern matches any file refuses to run at all' \
+live_money=src/main/kotlin/com/housedash/domain/money/EscrowHold.kt
+live_workflow=.github/workflows/process-review.yml
+live_gate=scripts/agent-review.sh
+live_owners=CODEOWNERS
+stray_mint=src/main/kotlin/com/housedash/adapters/inbound/http/MintController.kt
+
+probe_repo 'a checkout where neither trigger pattern matches any file refuses to run at all' 2 \
     'can no longer see the path it guards' README.md
 
-probe_repo 'a checkout with a money file but no gate-bearing file still refuses, on the gate trigger' \
-    'can no longer see the path it guards' README.md src/main/kotlin/com/housedash/domain/money/EscrowHold.kt
+probe_repo 'a checkout with a money file but no gate-bearing file still refuses, on the workflows trigger' 2 \
+    'trigger workflows' README.md "$live_money"
 
-probe_repo 'a checkout whose domain layer moved refuses to run even though the rest is there' \
-    'can no longer see the path it guards' README.md scripts/agent-review.sh .github/workflows/process-review.yml
+probe_repo 'a checkout whose domain layer moved refuses to run even though the rest is there' 2 \
+    'trigger domain-money' README.md "$live_gate" "$live_workflow" "$live_owners"
+
+probe_repo 'a checkout with every live trigger present and nothing else is not blind and passes' 0 \
+    'requires no review dimensions' README.md "$live_money" "$live_workflow" "$live_gate" "$live_owners"
+
+probe_repo 'domain/money renamed to domain/finance is refused even while a stray mint file still matches a sibling' 2 \
+    'trigger domain-money' README.md src/main/kotlin/com/housedash/domain/finance/EscrowHold.kt \
+    "$live_workflow" "$live_gate" "$live_owners" "$stray_mint"
+
+probe_repo 'the gate script renamed is refused even while .github still matches a sibling' 2 \
+    'trigger gate-script' README.md "$live_money" "$live_workflow" "$live_owners" scripts/review-gate.sh
+
+probe_repo 'the workflows directory gone is refused even while the gate script still matches a sibling' 2 \
+    'trigger workflows' README.md "$live_money" "$live_gate" "$live_owners"
+
+probe_repo 'CODEOWNERS gone is refused even while every other gate-bearing file is present' 2 \
+    'trigger codeowners' README.md "$live_money" "$live_workflow" "$live_gate"
+
+probe_repo 'a domain/quote directory that now exists does not make the gate refuse, it just stops being unbuilt' 0 \
+    'requires no review dimensions' README.md "$live_money" "$live_workflow" "$live_gate" "$live_owners" \
+    src/main/kotlin/com/housedash/domain/quote/Quote.kt
 
 check 'a trailer sha one character too long reads as missing, though the trailer length clause alone cannot be isolated because HEAD_SHA is already forty lowercase hex' 3 \
     "$touched_gate_script" "$(set_of "$(review security clean "${sha}1")")" \
@@ -410,6 +454,218 @@ check 'a blocked verdict is a refusal even while another required dimension has 
 check 'a malformed verdict is a refusal, not a pending round' 1 "$touched_gate_script" \
     "$(set_of "$(review security cleann)")" \
     'is not one of the verdicts' '[]' 'pending:'
+
+files_of() { jq -cn '$ARGS.positional | map({filename: .})' --args "$@"; }
+
+check_files() {
+    local name=$1 want=$2 files=$3 legacy=$4 wanted_text=${5:-} unwanted_text=${6:-} count=${7:-}
+    case_files=$files
+    case_count=$count
+    check "$name" "$want" "$legacy" '[]' "$wanted_text" '[]' "$unwanted_text"
+    case_files=''
+    case_count=''
+}
+
+check_paths() {
+    local name=$1 want=$2 wanted_text=$3
+    shift 3
+    check_files "$name" "$want" "$(files_of "$@")" "$(printf '%s\n' "$@")" "$wanted_text"
+}
+
+alive_pinned=''
+
+check_alive() {
+    local trigger=$1 dimension=$2 sample=$3
+    local name="trigger ${trigger} is alive on its own pinned sample ${sample}, and no sibling trigger claims that sample"
+    names="${names}${name}"$'\n'
+    alive_pinned="${alive_pinned}${trigger}"$'\n'
+    local out got matched
+    out=$(PATH="${stub_dir}:${PATH}" \
+        STUB_CHANGED="$sample" STUB_REVIEWS='[]' STUB_THREADS='[]' \
+        PR_NUMBER=1 HEAD_SHA="$sha" GITHUB_REPOSITORY=Emreerkaya/housedash-core-service \
+        bash "$gate" 2>&1)
+    got=$?
+    matched=$(printf '%s\n' "$out" | grep -c '^matched: ')
+    if [ "$got" -ne 3 ] || [ "$matched" -ne 1 ] \
+        || ! printf '%s' "$out" | grep -q "^matched: ${trigger} (${dimension})$" \
+        || ! printf '%s' "$out" | grep -q "waiting for ${dimension} at "; then
+        printf 'FAIL %s: expected exit 3, exactly one matched line and it naming %s (%s); got exit %s and %s matched line(s)\n%s\n\n' \
+            "$name" "$trigger" "$dimension" "$got" "$matched" "$out" >&2
+        fail=$((fail + 1))
+        return
+    fi
+    printf 'ok %s\n' "$name"
+    pass=$((pass + 1))
+}
+
+check_alive domain-money invariants src/main/kotlin/com/housedash/domain/money/EscrowHold.kt
+check_alive domain-quote invariants src/main/kotlin/com/housedash/domain/quote/Quote.kt
+check_alive domain-booking invariants src/main/kotlin/com/housedash/domain/booking/Booking.kt
+check_alive domain-review invariants src/main/kotlin/com/housedash/domain/review/Review.kt
+check_alive mint-route invariants src/main/kotlin/com/housedash/adapters/inbound/http/MintController.kt
+check_alive workflows security .github/workflows/process-review.yml
+check_alive gate-script security scripts/agent-review.sh
+check_alive codeowners security CODEOWNERS
+
+check_paths 'trigger control-character is alive: one tab in an otherwise unguarded path requires security' 3 \
+    'matched: control-character (security)' $'docs/ops/a\tb.md'
+
+check_paths 'bypass 01: domain/Money/ in capitals requires invariants' 3 'waiting for invariants' \
+    src/main/kotlin/com/housedash/domain/Money/EscrowHold.kt
+check_paths 'bypass 02: Domain/money/ with a capital D requires invariants' 3 'waiting for invariants' \
+    src/main/kotlin/com/housedash/Domain/money/EscrowHold.kt
+check_paths 'bypass 03: domain/Quote/ in capitals requires invariants' 3 'waiting for invariants' \
+    src/main/kotlin/com/housedash/domain/Quote/Quote.kt
+check_paths 'bypass 04: domain/Booking/ in capitals requires invariants' 3 'waiting for invariants' \
+    src/main/kotlin/com/housedash/domain/Booking/Booking.kt
+check_paths 'bypass 05: domain/Review/ in capitals requires invariants' 3 'waiting for invariants' \
+    src/main/kotlin/com/housedash/domain/Review/Review.kt
+check_paths 'bypass 06: a directory inserted between domain/ and money/ requires invariants' 3 'waiting for invariants' \
+    src/main/kotlin/com/housedash/domain/core/money/EscrowHold.kt
+check_paths 'bypass 07: a multi-module prefix ahead of src/ requires invariants' 3 'waiting for invariants' \
+    payment-module/src/main/kotlin/com/housedash/domain/money/EscrowHold.kt
+check_paths 'bypass 08: a mint adapter whose name does not begin with Mint requires invariants' 3 'waiting for invariants' \
+    src/main/kotlin/com/housedash/adapters/outbound/StripeMintAdapter.kt
+check_paths 'bypass 09: MINTController in capitals requires invariants' 3 'waiting for invariants' \
+    src/main/kotlin/com/housedash/adapters/inbound/http/MINTController.kt
+check_paths 'bypass 10: .GITHUB/ in capitals requires security' 3 'waiting for security' \
+    .GITHUB/workflows/x.yml
+check_paths 'bypass 11: a raw newline splitting domain/money/ across two lines requires invariants and security' 3 \
+    'waiting for invariants security' \
+    $'src/main/kotlin/com/housedash/domain/mo\nney/EscrowHold.kt'
+check_paths 'bypass 12: a raw newline splitting scripts/agent-review.sh across two lines requires security' 3 \
+    'waiting for security' \
+    $'scripts/agent-review\n.sh'
+check_paths 'bypass 13: a nested directory and capitals together require invariants' 3 'waiting for invariants' \
+    src/main/kotlin/com/housedash/domain/Core/Money/Foo.kt
+
+check_files 'control 1: a file moved into domain/money/ from elsewhere requires invariants' 3 \
+    '[{"filename":"src/main/kotlin/com/housedash/domain/money/Fee.kt","status":"renamed","previous_filename":"src/main/kotlin/com/housedash/app/Fee.kt"}]' \
+    'src/main/kotlin/com/housedash/domain/money/Fee.kt' 'waiting for invariants'
+check_paths 'control 2: a move shown as a deletion plus an addition requires invariants' 3 'waiting for invariants' \
+    src/main/kotlin/com/housedash/app/Fee.kt src/main/kotlin/com/housedash/domain/money/Fee.kt
+check_paths 'control 3: a path containing a space requires invariants' 3 'waiting for invariants' \
+    'src/main/kotlin/com/housedash/domain/money/Escrow Hold.kt'
+check_paths 'control 4: a path containing a double quote and a semicolon requires invariants' 3 'waiting for invariants' \
+    'src/main/kotlin/com/housedash/domain/money/"; rm -rf /; echo ".kt'
+check_paths 'control 5: a path containing a command substitution requires invariants and executes nothing' 3 \
+    'waiting for invariants' \
+    'src/main/kotlin/com/housedash/domain/money/$(id).kt'
+check_paths 'control 6: the gate script under an underscore spelling requires security' 3 'waiting for security' \
+    scripts/agent_review.sh
+check_paths 'control 7: a lower-case codeowners file requires security' 3 'waiting for security' \
+    codeowners
+
+check_files 'a file renamed out of domain/money/ requires invariants through its previous name' 3 \
+    '[{"filename":"docs/fee.kt","status":"renamed","previous_filename":"src/main/kotlin/com/housedash/domain/money/Fee.kt"}]' \
+    'docs/fee.kt' 'waiting for invariants'
+
+check_files 'a file renamed out of scripts/agent-review.sh requires security through its previous name' 3 \
+    '[{"filename":"scripts/other.sh","status":"renamed","previous_filename":"scripts/agent-review.sh"}]' \
+    'scripts/other.sh' 'waiting for security'
+
+check_paths 'a domain/money path with a non-ASCII character is read by its real name and requires invariants' 3 \
+    'waiting for invariants' \
+    'src/main/kotlin/com/housedash/domain/money/Caf'$'\303\251''.kt'
+
+check_paths 'a non-ASCII path outside every guarded prefix requires no dimension' 0 \
+    'requires no review dimensions' 'docs/ops/caf'$'\303\251''.md'
+
+check_paths 'a path carrying a DEL byte fails closed to security review' 3 'waiting for security' \
+    $'docs/ops/a\177b.md'
+
+check_paths 'a path carrying a C1 control character fails closed to security review' 3 'waiting for security' \
+    $'docs/ops/a\302\205b.md'
+
+check_paths 'a path carrying a carriage return fails closed to security review' 3 'waiting for security' \
+    $'docs/ops/a\rb.md'
+
+check_files 'a path carrying an escaped NUL fails closed to security review' 3 \
+    '[{"filename":"docs/ops/a\u0000b.md"}]' 'docs/ops/ab.md' 'waiting for security'
+
+check_files 'a listing shorter than the pull request changed refuses rather than pass on a partial diff' 2 \
+    "$(files_of README.md)" 'README.md' 'refusing to pass on a partial diff' '' 3001
+
+check_files 'a file listing that is an error object rather than a list refuses' 2 \
+    '{"message":"Not Found"}' 'README.md' 'measured nothing' '' 1
+
+check_files 'a file listing entry with no filename refuses' 2 \
+    '[{"status":"added"}]' 'README.md' 'measured nothing' '' 1
+
+wiring_paths=(
+    Dockerfile
+    .dockerignore
+    .env.example
+    scripts/deploy-cloud-run.sh
+    scripts/supabase-verify.sh
+    src/main/resources/application-supabase.yml
+    src/main/kotlin/com/housedash/HouseDashService.kt
+    config/detekt/detekt.yml
+    src/test/kotlin/com/housedash/invariants/AbsenceTest.kt
+    justfile
+    docs/ops/supabase.md
+)
+
+for wiring in "${wiring_paths[@]}"; do
+    check_paths "wiring file ${wiring} alone requires no dimension" 0 'requires no review dimensions' "$wiring"
+done
+
+check_paths 'a wiring diff shaped like pull request 63 requires no dimension and passes with no reviews' 0 \
+    'this diff requires no review dimensions' "${wiring_paths[@]}"
+
+check_paths 'the fifteen files pull request 63 actually changes require no dimension' 0 \
+    'this diff requires no review dimensions' \
+    .dockerignore .env.example .gitignore Dockerfile build.gradle.kts config/detekt/detekt.yml docs/ops/supabase.md \
+    justfile scripts/deploy-cloud-run.sh scripts/supabase-verify.sh \
+    src/integrationTest/kotlin/com/housedash/SupabaseProfileTest.kt \
+    src/main/kotlin/com/housedash/HouseDashService.kt src/main/resources/application-supabase.yml \
+    src/main/resources/application.yml src/test/kotlin/com/housedash/invariants/AbsenceTest.kt
+
+check_paths 'a wiring diff with one guarded file added still requires exactly that file dimension' 3 \
+    'waiting for invariants' "${wiring_paths[@]}" src/main/kotlin/com/housedash/domain/booking/Booking.kt
+
+unbuilt_here=$(cd "${here}/.." && PATH="${stub_dir}:${PATH}" \
+    STUB_CHANGED="$untouched" STUB_REVIEWS='[]' STUB_THREADS='[]' \
+    PR_NUMBER=1 HEAD_SHA="$sha" GITHUB_REPOSITORY=Emreerkaya/housedash-core-service \
+    bash "$gate" 2>&1 | sed -n 's/^note: trigger \([a-z-]*\) has no file in this checkout yet.*/\1/p' | sort | tr '\n' ' ')
+names="${names}the triggers this checkout has no file for are exactly the pinned unbuilt set"$'\n'
+if [ "$unbuilt_here" != "domain-booking domain-quote domain-review mint-route " ]; then
+    printf 'FAIL the triggers this checkout has no file for are exactly the pinned unbuilt set: got %s\n' "${unbuilt_here:-none}" >&2
+    fail=$((fail + 1))
+else
+    printf 'ok the triggers this checkout has no file for are exactly the pinned unbuilt set\n'
+    pass=$((pass + 1))
+fi
+
+scratch=$(mktemp -d)
+sed 's#(^|/)domain/(\[^/\]+/)\*money/#(^|/)domain/([^/]+/)*finance/#' "$gate" > "${scratch}/agent-review.sh"
+names="${names}a trigger edited so it no longer matches its own pinned sample refuses to run"$'\n'
+mutant_out=$(cd "${here}/.." && PATH="${stub_dir}:${PATH}" \
+    STUB_CHANGED="$untouched" STUB_REVIEWS='[]' STUB_THREADS='[]' \
+    PR_NUMBER=1 HEAD_SHA="$sha" GITHUB_REPOSITORY=Emreerkaya/housedash-core-service \
+    bash "${scratch}/agent-review.sh" 2>&1)
+mutant_got=$?
+rm -rf "$scratch"
+if ! cmp -s <(sed 's#(^|/)domain/(\[^/\]+/)\*money/#(^|/)domain/([^/]+/)*finance/#' "$gate") "$gate" \
+    && [ "$mutant_got" -eq 2 ] && printf '%s' "$mutant_out" | grep -q 'trigger domain-money .* does not match its own pinned sample'; then
+    printf 'ok a trigger edited so it no longer matches its own pinned sample refuses to run\n'
+    pass=$((pass + 1))
+else
+    printf 'FAIL a trigger edited so it no longer matches its own pinned sample refuses to run: exit %s\n%s\n\n' "$mutant_got" "$mutant_out" >&2
+    fail=$((fail + 1))
+fi
+
+script_triggers=$(sed -n "s/^    '\([a-z-]*\)::.*/\1/p" "$gate" | sort | tr '\n' ' ')
+pinned_triggers=$(printf '%s' "$alive_pinned" | sort | tr '\n' ' ')
+names="${names}every trigger the gate script defines has a pinned positive case and no pinned case names a trigger it lacks"$'\n'
+if [ -z "$script_triggers" ] || [ "$script_triggers" != "$pinned_triggers" ]; then
+    printf 'FAIL every trigger the gate script defines has a pinned positive case: the script defines [%s] and the suite pins [%s]\n' \
+        "$script_triggers" "$pinned_triggers" >&2
+    fail=$((fail + 1))
+else
+    printf 'ok every trigger the gate script defines has a pinned positive case and no pinned case names a trigger it lacks (%s)\n' "$script_triggers"
+    pass=$((pass + 1))
+fi
 
 printf '\n%s passed, %s failed\n' "$pass" "$fail"
 
