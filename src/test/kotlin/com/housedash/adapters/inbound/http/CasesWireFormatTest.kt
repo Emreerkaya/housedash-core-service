@@ -96,14 +96,17 @@ class CasesWireFormatTest {
     @Test
     fun `the instrument reads the handlers that exist rather than a list of names`() {
         assertEquals(
-            listOf("com.housedash.adapters.inbound.http.CaseController"),
+            listOf(
+                "com.housedash.adapters.inbound.http.CaseController",
+                "com.housedash.adapters.inbound.http.DeviceTokenController",
+            ),
             controllers.map { it.name },
             "the controllers are found by their annotation, so a second one joins this list and whoever adds " +
                 "it decides then what its wire format may carry",
         )
         assertEquals(
-            listOf("create"),
-            handlers.map { it.name },
+            listOf("create", "register", "revoke"),
+            handlers.map { it.name }.sorted(),
             "a handler is found by carrying a $SPRING_WEB_BINDING annotation. A handler that left this list " +
                 "took its parameters out of every assertion below with it",
         )
@@ -114,9 +117,13 @@ class CasesWireFormatTest {
         assertEquals(
             setOf(
                 "com.housedash.adapters.inbound.http.CreateCaseRequest",
+                "com.housedash.adapters.inbound.http.RegisterDeviceTokenRequest",
+                "com.housedash.app.SubmittedDeviceId",
                 "com.housedash.app.SubmittedId",
                 "com.housedash.app.SubmittedKey",
+                "com.housedash.app.SubmittedNesterId",
                 "com.housedash.app.SubmittedText",
+                "com.housedash.app.SubmittedToken",
                 "java.util.List",
             ),
             wireTypes.map { it.name }.toSortedSet().toSet(),

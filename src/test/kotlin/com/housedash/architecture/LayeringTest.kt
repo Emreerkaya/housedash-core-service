@@ -722,6 +722,8 @@ class LayeringTest {
 
         const val MONEY_PACKAGE = "com.housedash.domain.money"
 
+        const val NOTIFICATION_PACKAGE = "com.housedash.domain.notification"
+
         val AGGREGATE_VARIANTS_BY_NAME =
             setOf(
                 "$CASE_PACKAGE.DraftCase",
@@ -783,23 +785,60 @@ class LayeringTest {
                     ),
                 "$MONEY_PACKAGE.Subscription" to setOf("$MONEY_PACKAGE.Subscription\$Companion#flat"),
                 "$MONEY_PACKAGE.SubscriptionId" to setOf("$MONEY_PACKAGE.SubscriptionId\$Companion#of"),
+                "$NOTIFICATION_PACKAGE.DeviceId" to setOf("$NOTIFICATION_PACKAGE.DeviceId\$Companion#of"),
+                "$NOTIFICATION_PACKAGE.DeviceTokenId" to setOf("$NOTIFICATION_PACKAGE.DeviceTokenId\$Companion#of"),
+                "$NOTIFICATION_PACKAGE.NotificationId" to setOf("$NOTIFICATION_PACKAGE.NotificationId\$Companion#of"),
+                "$NOTIFICATION_PACKAGE.DeviceRegistration" to
+                    setOf(
+                        "$NOTIFICATION_PACKAGE.DeviceRegistration\$Companion#register",
+                        "$NOTIFICATION_PACKAGE.DeviceRegistration\$Companion#rehydrate",
+                        "$NOTIFICATION_PACKAGE.DeviceRegistration#revoke",
+                    ),
+                "$NOTIFICATION_PACKAGE.QueuedNotification" to
+                    setOf(
+                        "$NOTIFICATION_PACKAGE.QueuedNotification\$Companion#queue",
+                        "$NOTIFICATION_PACKAGE.QueuedNotification\$Companion#rehydrate",
+                        "$NOTIFICATION_PACKAGE.QueuedNotification#sent",
+                        "$NOTIFICATION_PACKAGE.QueuedNotification#failed",
+                    ),
             )
 
         val RECONSTRUCTION_ENTRY_POINTS_BY_NAME =
-            setOf("$CASE_PACKAGE.Case\$Companion#rehydrate", "$MONEY_PACKAGE.EscrowHold\$Companion#rehydrate")
+            setOf(
+                "$CASE_PACKAGE.Case\$Companion#rehydrate",
+                "$MONEY_PACKAGE.EscrowHold\$Companion#rehydrate",
+                "$NOTIFICATION_PACKAGE.DeviceRegistration\$Companion#rehydrate",
+                "$NOTIFICATION_PACKAGE.QueuedNotification\$Companion#rehydrate",
+            )
 
-        val RECONSTRUCTION_ROUTES_THE_REPOSITORY_CALLS = setOf("$CASE_PACKAGE.Case\$Companion#rehydrate")
+        val RECONSTRUCTION_ROUTES_THE_REPOSITORY_CALLS =
+            setOf(
+                "$CASE_PACKAGE.Case\$Companion#rehydrate",
+                "$NOTIFICATION_PACKAGE.DeviceRegistration\$Companion#rehydrate",
+                "$NOTIFICATION_PACKAGE.QueuedNotification\$Companion#rehydrate",
+            )
 
         val RECONSTRUCTION_ROUTES_AWAITING_A_REPOSITORY = setOf("$MONEY_PACKAGE.EscrowHold\$Companion#rehydrate")
 
-        val ROWS_THE_REPOSITORY_FORGES = setOf("$CASE_PACKAGE.CaseRow")
+        val ROWS_THE_REPOSITORY_FORGES =
+            setOf(
+                "$CASE_PACKAGE.CaseRow",
+                "$NOTIFICATION_PACKAGE.DeviceRegistrationRow",
+                "$NOTIFICATION_PACKAGE.NotificationRow",
+            )
 
         val ROWS_AWAITING_A_REPOSITORY = setOf("$MONEY_PACKAGE.HoldRow", "$MONEY_PACKAGE.LedgerRow")
 
         val TYPES_WITH_A_REOPENED_CONSTRUCTOR = emptySet<String>()
 
         val FORGEABLE_ROW_CONSTRUCTORS =
-            setOf("$CASE_PACKAGE.CaseRow", "$MONEY_PACKAGE.HoldRow", "$MONEY_PACKAGE.LedgerRow")
+            setOf(
+                "$CASE_PACKAGE.CaseRow",
+                "$MONEY_PACKAGE.HoldRow",
+                "$MONEY_PACKAGE.LedgerRow",
+                "$NOTIFICATION_PACKAGE.DeviceRegistrationRow",
+                "$NOTIFICATION_PACKAGE.NotificationRow",
+            )
 
         const val CONSTRUCTOR = "<init>"
 
@@ -807,10 +846,17 @@ class LayeringTest {
 
         const val WIRE_PACKAGE = "com.housedash.adapters.inbound.http"
 
+        const val PERSISTENCE_PACKAGE = "com.housedash.adapters.outbound.persistence"
+
         val LAYERS_THE_MINT_RULES_SCOPE_BY = listOf(APP_PACKAGE, "com.housedash.adapters")
 
         val PACKAGES_THE_MINT_RULES_REFUSE =
-            setOf(APP_PACKAGE, WIRE_PACKAGE, "com.housedash.adapters.outbound.persistence")
+            setOf(
+                APP_PACKAGE,
+                WIRE_PACKAGE,
+                "com.housedash.adapters.outbound.persistence",
+                "com.housedash.adapters.outbound.push",
+            )
 
         val ROUTES_ENTITLED_BY_PACKAGE: Map<String, Set<String>> =
             mapOf(
@@ -821,6 +867,18 @@ class LayeringTest {
                         "$CASE_PACKAGE.DraftCase\$Companion#of",
                         "$CASE_PACKAGE.DraftCase#describe",
                         "$CASE_PACKAGE.PhotoId\$Companion#of",
+                        "$NOTIFICATION_PACKAGE.DeviceId\$Companion#of",
+                        "$NOTIFICATION_PACKAGE.DeviceTokenId\$Companion#of",
+                        "$NOTIFICATION_PACKAGE.NotificationId\$Companion#of",
+                        "$NOTIFICATION_PACKAGE.DeviceRegistration\$Companion#register",
+                        "$NOTIFICATION_PACKAGE.QueuedNotification#sent",
+                        "$NOTIFICATION_PACKAGE.QueuedNotification#failed",
+                    ),
+                PERSISTENCE_PACKAGE to
+                    setOf(
+                        "$NOTIFICATION_PACKAGE.DeviceRegistration\$Companion#rehydrate",
+                        "$NOTIFICATION_PACKAGE.DeviceRegistration#revoke",
+                        "$NOTIFICATION_PACKAGE.QueuedNotification\$Companion#rehydrate",
                     ),
             )
 
@@ -869,6 +927,16 @@ class LayeringTest {
                 "$MONEY_PACKAGE.Subscription\$Companion",
                 "$MONEY_PACKAGE.SubscriptionId",
                 "$MONEY_PACKAGE.SubscriptionId\$Companion",
+                "$NOTIFICATION_PACKAGE.DeviceId",
+                "$NOTIFICATION_PACKAGE.DeviceId\$Companion",
+                "$NOTIFICATION_PACKAGE.DeviceTokenId",
+                "$NOTIFICATION_PACKAGE.DeviceTokenId\$Companion",
+                "$NOTIFICATION_PACKAGE.NotificationId",
+                "$NOTIFICATION_PACKAGE.NotificationId\$Companion",
+                "$NOTIFICATION_PACKAGE.DeviceRegistration",
+                "$NOTIFICATION_PACKAGE.DeviceRegistration\$Companion",
+                "$NOTIFICATION_PACKAGE.QueuedNotification",
+                "$NOTIFICATION_PACKAGE.QueuedNotification\$Companion",
             )
     }
 }

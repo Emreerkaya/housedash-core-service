@@ -31,6 +31,11 @@ private val CONSTANTS_BOUND_TO_A_SHIPPED_RECORD =
         "MIN_LENGTH" to "$DOMAIN_SOURCE_ROOT/case/Description.kt",
         "PERCENT_OF_THE_ACCEPTED_TOTAL" to "$DOMAIN_SOURCE_ROOT/money/CallOutFee.kt",
         "CAP_CENTS" to "$DOMAIN_SOURCE_ROOT/money/CallOutFee.kt",
+        "MAX_ATTEMPTS" to "$DOMAIN_SOURCE_ROOT/notification/QueuedNotification.kt",
+        "TITLE_MIN" to "$DOMAIN_SOURCE_ROOT/notification/QueuedNotification.kt",
+        "TITLE_MAX" to "$DOMAIN_SOURCE_ROOT/notification/QueuedNotification.kt",
+        "BODY_MIN" to "$DOMAIN_SOURCE_ROOT/notification/QueuedNotification.kt",
+        "BODY_MAX" to "$DOMAIN_SOURCE_ROOT/notification/QueuedNotification.kt",
     )
 
 private val CONSTANTS_THAT_CARRY_ANOTHER_CONSTANTS_RECORD =
@@ -99,6 +104,10 @@ private val CONSTANTS_THAT_DECIDE_NOTHING_A_NESTER_SEES =
     mapOf(
         "MAX_BODY_LENGTH" to
             "the width of an identifier's body, fixed by the identifier shape rather than chosen for a Nester",
+        "MIN_TOKEN_LENGTH" to
+            "a device token's floor is non-blank, fixed by what a token is rather than chosen for a Nester",
+        "MAX_TOKEN_LENGTH" to
+            "a device token's byte-length ceiling, fixed by APNs' own token format rather than chosen for a Nester",
         "MARK_BETWEEN_TWO_DIGIT_GROUPS" to A_PIECE_OF_THE_FILTERS_PATTERN_VOCABULARY,
         "MARKS_ONE_SEPARATOR_IS_WRITTEN_WITH" to A_PIECE_OF_THE_FILTERS_PATTERN_VOCABULARY,
         "SEPARATOR_BETWEEN_TWO_DIGIT_GROUPS" to A_PIECE_OF_THE_FILTERS_PATTERN_VOCABULARY,
