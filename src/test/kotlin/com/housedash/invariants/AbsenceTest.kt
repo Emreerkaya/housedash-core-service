@@ -286,9 +286,10 @@ class AbsenceTest {
             "$MERGE_GATE_SCRIPT no longer adds the invariants dimension to the required set, so both " +
                 "tripwires now hand their residual to a mechanism that does not fire, which is D178 again"
         }
-        assertTrue(gate.contains(DOMAIN_DIFF_TRIGGER)) {
-            "$MERGE_GATE_SCRIPT no longer keys the invariants dimension on a diff under $DOMAIN_SOURCE_ROOT, " +
-                "so a change to this layer can be merged with no invariants review"
+        val unkeyed = GUARDED_DOMAIN_TRIGGERS.filterNot { trigger -> gate.contains("'$trigger::") }
+        assertTrue(unkeyed.isEmpty()) {
+            "$MERGE_GATE_SCRIPT no longer defines the invariants triggers $unkeyed, so a change to those " +
+                "packages under $DOMAIN_SOURCE_ROOT can be merged with no invariants review"
         }
     }
 
@@ -367,7 +368,7 @@ class AbsenceTest {
 
         const val INVARIANTS_REQUIRED = "required+=(invariants)"
 
-        const val DOMAIN_DIFF_TRIGGER = "^\"?src/[^/]+/kotlin/com/housedash/domain/"
+        val GUARDED_DOMAIN_TRIGGERS = listOf("domain-money", "domain-quote", "domain-booking", "domain-review")
 
         val WHITESPACE = Regex("""\s+""")
 
@@ -405,8 +406,10 @@ class AbsenceTest {
         const val THE_RESIDUAL =
             "The residual belongs to the one mechanism on this repository that blocks a merge on a human " +
                 "judgement: the invariants review dimension, which scripts/agent-review.sh requires of " +
-                "every pull request whose diff touches src/*/kotlin/com/housedash/domain/ and without " +
-                "which the merge gate exits non-zero. It is not covered by CODEOWNERS, which D178 measured " +
+                "every pull request whose diff touches the money, quote, booking or review package under " +
+                "src/*/kotlin/com/housedash/domain/ and without which the merge gate exits non-zero. A diff " +
+                "to any other domain package requires no review dimension (#55), so the residual there is " +
+                "owned by nobody. It is not covered by CODEOWNERS, which D178 measured " +
                 "as require_code_owner_review false, zero required approvals and one collaborator who is " +
                 "every pull request's author, so an entry names an owner and summons nobody."
 
