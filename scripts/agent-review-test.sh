@@ -37,7 +37,8 @@ if [ "${1:-}" = "api" ] && printf '%s' "$*" | grep -qE '/pulls/[0-9]+$'; then
         printf 'gh: could not determine the changed files\n' >&2
         exit 1
     fi
-    printf '{"changed_files": %s}' "${STUB_COUNT:-$(files_json | jq 'length')}"
+    printf '{"changed_files": %s, "base": {"ref": "%s", "repo": {"default_branch": "%s"}}, "head": {"sha": "%s"}}' \
+        "${STUB_COUNT:-$(files_json | jq 'length')}" "${STUB_BASE:-main}" "${STUB_DEFAULT_BRANCH:-main}" "${STUB_PR_HEAD:-${HEAD_SHA-}}"
     exit 0
 fi
 if [ "${1:-}" = "api" ] && [ "${2:-}" = "graphql" ]; then
@@ -95,6 +96,7 @@ check() {
     local out got
     out=$(PATH="${stub_dir}:${PATH}" \
         STUB_CHANGED="$changed" STUB_FILES="${case_files-}" STUB_COUNT="${case_count-}" \
+        STUB_BASE="${case_base-}" STUB_DEFAULT_BRANCH="${case_default-}" STUB_PR_HEAD="${case_pr_head-}" \
         STUB_REVIEWS="$reviews" STUB_THREADS="$threads" \
         PR_NUMBER=1 HEAD_SHA="$sha" GITHUB_REPOSITORY=Emreerkaya/housedash-core-service \
         bash "$gate" 2>&1)
@@ -118,7 +120,7 @@ check() {
     pass=$((pass + 1))
 }
 
-cases_this_suite_runs=136
+cases_this_suite_runs=141
 
 
 check 'an ordinary diff requires no dimensions and passes with no reviews at all' 0 "$untouched" '[]' \
@@ -585,6 +587,32 @@ check_files 'a path carrying an escaped NUL fails closed to security review' 3 \
 
 check_files 'a listing shorter than the pull request changed refuses rather than pass on a partial diff' 2 \
     "$(files_of README.md)" 'README.md' 'refusing to pass on a partial diff' '' 3001
+
+with_pull() {
+    case_base=$1
+    case_default=$2
+    case_pr_head=$3
+    shift 3
+    "$@"
+    case_base=''
+    case_default=''
+    case_pr_head=''
+}
+
+with_pull staging main '' check_paths 'a pull request against a non-default base refuses, so its verdict cannot be published for a sibling pull request on the same head' 2 \
+    'not the default branch' docs/note.md
+
+with_pull main main "$other" check_paths 'a pull request whose head is not the HEAD_SHA being judged refuses' 2 \
+    'not the files this verdict would be published for' docs/note.md
+
+with_pull null main '' check_paths 'a pull request object carrying no base ref refuses' 2 \
+    'not the default branch' docs/note.md
+
+with_pull trunk trunk '' check_paths 'a default branch that is not called main is still a default branch and passes' 0 \
+    'requires no review dimensions' docs/note.md
+
+with_pull main main '' check_paths 'a pull request against the default branch whose head matches is judged as before' 0 \
+    'requires no review dimensions' docs/note.md
 
 check_files 'a file listing that is an error object rather than a list refuses' 2 \
     '{"message":"Not Found"}' 'README.md' 'measured nothing' '' 1
