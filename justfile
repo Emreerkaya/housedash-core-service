@@ -27,3 +27,18 @@ commits base="origin/main":
 
 gate-test:
     scripts/agent-review-test.sh
+
+db-local-up:
+    docker compose up -d --wait postgres
+
+db-local-down:
+    docker compose down
+
+supabase-verify:
+    scripts/supabase-verify.sh
+
+image:
+    docker build -t housedash-core-service:local .
+
+deploy-cloud-run project region service db_host db_user password_secret secret_version="latest":
+    scripts/deploy-cloud-run.sh {{project}} {{region}} {{service}} {{db_host}} {{db_user}} {{password_secret}} {{secret_version}}
