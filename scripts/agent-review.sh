@@ -14,8 +14,24 @@ if [ "${#head_sha}" -ne 40 ] || ! printf '%s' "$head_sha" | grep -qxE '[0-9a-f]{
 fi
 
 if ! files=$(gh api --paginate --slurp "repos/${owner_repo}/pulls/${pr}/files?per_page=100" | jq -c '[.[][]]') \
-    || ! expected=$(gh api "repos/${owner_repo}/pulls/${pr}" | jq '.changed_files'); then
+    || ! pull=$(gh api "repos/${owner_repo}/pulls/${pr}" | jq -c '{expected: .changed_files, base: .base.ref, default: .base.repo.default_branch, head: .head.sha}'); then
     printf 'could not list the files pull request %s changed, so nothing was measured\n' "$pr" >&2
+    exit 2
+fi
+
+expected=$(printf '%s' "$pull" | jq -r '.expected')
+base_ref=$(printf '%s' "$pull" | jq -r '.base')
+default_branch=$(printf '%s' "$pull" | jq -r '.default')
+pr_head=$(printf '%s' "$pull" | jq -r '.head')
+
+if [ "$base_ref" = "null" ] || [ "$default_branch" = "null" ] || [ "$base_ref" != "$default_branch" ]; then
+    printf 'pull request %s targets base %s, not the default branch %s; the required set is computed against the base, and a verdict is published on the head sha alone, so a verdict for any other base could satisfy the check for the real pull request; refusing\n' \
+        "$pr" "$base_ref" "$default_branch" >&2
+    exit 2
+fi
+if [ "$pr_head" != "$head_sha" ]; then
+    printf 'pull request %s head is %s but HEAD_SHA is %s, so the files measured are not the files this verdict would be published for; refusing\n' \
+        "$pr" "$pr_head" "$head_sha" >&2
     exit 2
 fi
 
