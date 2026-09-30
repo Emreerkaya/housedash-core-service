@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.spring.boot)
     alias(libs.plugins.detekt)
     alias(libs.plugins.ktlint)
     jacoco
@@ -62,6 +63,10 @@ tasks.register<Test>("integrationTest") {
     classpath = sourceSets["integrationTest"].runtimeClasspath
     useJUnitPlatform()
     shouldRunAfter(tasks.test)
+}
+
+tasks.jar {
+    enabled = false
 }
 
 tasks.test {

@@ -38,6 +38,10 @@ exceptions:
   TooGenericExceptionCaught:
     active: true
 
+performance:
+  SpreadOperator:
+    excludes: ['**/test/**', '**/integrationTest/**', '**/com/housedash/HouseDashService.kt']
+
 potential-bugs:
   IgnoredReturnValue:
     returnValueTypes:
