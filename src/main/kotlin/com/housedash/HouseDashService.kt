@@ -5,6 +5,7 @@ import com.housedash.app.CaseRepository
 import com.housedash.app.CreateCase
 import com.housedash.app.RandomCaseIdentifiers
 import org.springframework.boot.autoconfigure.SpringBootApplication
+import org.springframework.boot.runApplication
 import org.springframework.context.annotation.Bean
 import java.time.Clock
 
@@ -22,4 +23,8 @@ class HouseDashService {
         identifiers: CaseIdentifiers,
         clock: Clock,
     ): CreateCase = CreateCase(cases, identifiers, clock)
+}
+
+fun main(args: Array<String>) {
+    runApplication<HouseDashService>(*args)
 }

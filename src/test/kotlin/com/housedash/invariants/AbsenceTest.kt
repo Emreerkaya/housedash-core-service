@@ -372,9 +372,9 @@ class AbsenceTest {
 
         val WHITESPACE = Regex("""\s+""")
 
-        const val PRODUCTION_TYPES_THE_SCAN_READS = 164
+        const val PRODUCTION_TYPES_THE_SCAN_READS = 165
 
-        const val NAMED_MEMBERS_THE_SCAN_READS = 2373
+        const val NAMED_MEMBERS_THE_SCAN_READS = 2375
 
         const val TABLE_CONTENTS_NOT_SIZE =
             "a size floor asks whether a table is still big and the question is whether it is still the set " +
